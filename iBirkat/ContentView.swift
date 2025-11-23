@@ -1,3 +1,4 @@
+// Полная актуальная версия ContentView.swift для замены файла целиком
 import SwiftUI
 import UIKit
 
