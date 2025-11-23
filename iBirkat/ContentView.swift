@@ -10,6 +10,113 @@ struct JewishDayInfo {
     let special: String?        // למשל: "פורים"
 }
 
+// ---------------------------------------------------------
+// ZMANIM MODELS (простая витрина с мнениями)
+// ---------------------------------------------------------
+
+struct ZmanOpinion: Identifiable, Hashable {
+    let id = UUID()
+    let title: String
+    let time: String
+}
+
+struct ZmanItem: Identifiable, Hashable {
+    let id = UUID()
+    let title: String
+    let opinions: [ZmanOpinion]
+    let subtitle: String?
+
+    var defaultOpinion: ZmanOpinion { opinions.first! }
+}
+
+/// Мини-провайдер времён. В реальном приложении эти времена нужно брать из
+/// астрономического модуля и точной геолокации. Здесь мы просто строим
+/// наглядный список с лёгким смещением по датам, чтобы показать поведение
+/// интерфейса и выбор «по какому мнению».
+final class ZmanimProvider {
+    private let gregorianCalendar = Calendar(identifier: .gregorian)
+    private let hebrewCalendar: Calendar = {
+        var cal = Calendar(identifier: .hebrew)
+        cal.locale = Locale(identifier: "he_IL")
+        return cal
+    }()
+
+    func zmanim(for date: Date) -> [ZmanItem] {
+        let offset = minuteOffset(for: date)
+        let sunrise = 6 * 60 + offset
+        let sunset  = 18 * 60 + offset
+
+        // Базовые времена — просто относительные точки, чтобы интерфейс был живым
+        let chatzot = (sunrise + sunset) / 2
+
+        var list: [ZmanItem] = [
+            buildItem(title: "עלות השחר", base: sunrise - 90, offset: offset),
+            buildItem(title: "משיכיר", base: sunrise - 50, offset: offset),
+            buildItem(title: "נץ החמה", base: sunrise, offset: offset),
+            buildItem(title: "סוף זמן ק""ש (מגן אברהם)", base: sunrise + 180, offset: offset),
+            buildItem(title: "סוף זמן ק""ש (הגר""א)", base: sunrise + 198, offset: offset),
+            buildItem(title: "סוף זמן תפילה", base: sunrise + 264, offset: offset),
+            buildItem(title: "חצות היום", base: chatzot, offset: offset),
+            buildItem(title: "מנחה גדולה", base: chatzot + 30, offset: offset),
+            buildItem(title: "מנחה קטנה", base: sunset - 150, offset: offset),
+            buildItem(title: "פלג המנחה", base: sunset - 75, offset: offset),
+            buildItem(title: "שקיעה", base: sunset, offset: offset),
+            buildItem(title: "צאת הכוכבים", base: sunset + 25, offset: offset)
+        ]
+
+        if shouldShowCandleLighting(for: date) {
+            let candleTime = sunset - 18
+            let subtitle = isFriday(date) ? "הדלקת נרות ערב שבת" : "הדלקת נרות ערב חג"
+            list.insert(buildItem(title: "הדלקת נרות", base: candleTime, offset: offset, subtitle: subtitle), at: 0)
+        }
+
+        return list
+    }
+
+    private func buildItem(title: String, base: Int, offset: Int, subtitle: String? = nil) -> ZmanItem {
+        let opinions = [
+            ZmanOpinion(title: "לפי הרב עובדיה", time: timeString(from: base)),
+            ZmanOpinion(title: "לפי החזון איש", time: timeString(from: base + 3)),
+            ZmanOpinion(title: "לפי הגר""א", time: timeString(from: base - 2))
+        ]
+
+        return ZmanItem(title: title, opinions: opinions, subtitle: subtitle)
+    }
+
+    private func shouldShowCandleLighting(for date: Date) -> Bool {
+        if isFriday(date) { return true }
+
+        let comps = hebrewCalendar.dateComponents([.month, .day], from: date)
+        guard let month = comps.month, let day = comps.day else { return false }
+
+        // Условно считаем: ערב חג для Песаха и Суккота
+        let erevPesach = (month == 8 && day == 14)
+        let erevSukkot = (month == 1 && day == 14)
+        return erevPesach || erevSukkot
+    }
+
+    private func isFriday(_ date: Date) -> Bool {
+        let weekday = gregorianCalendar.component(.weekday, from: date)
+        return weekday == 6 // 1-вс, 6-пт
+    }
+
+    private func minuteOffset(for date: Date) -> Int {
+        let ord = gregorianCalendar.ordinality(of: .day, in: .year, for: date) ?? 0
+        return (ord % 8) - 4
+    }
+
+    private func timeString(from minutes: Int) -> String {
+        let total = ((minutes % (24 * 60)) + (24 * 60)) % (24 * 60)
+        let h = total / 60
+        let m = total % 60
+        let components = DateComponents(calendar: gregorianCalendar, hour: h, minute: m)
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        formatter.locale = Locale(identifier: "he_IL")
+        return formatter.string(from: components.date!)
+    }
+}
+
 /// Помощник по еврейской дате на базе системного календаря .hebrew.
 /// Учитываем, что еврейский день начинается вечером: делаем сдвиг +6 часов.
 final class HebrewDateHelper {
@@ -199,9 +306,10 @@ struct ContentView: View {
     @State private var currentPageIndex: Int = 0
     @State private var selectedPrayer: Prayer = birkatHamazon
     @State private var showSettings: Bool = false
-
-    // только «пустая» кнопка Зманим — показывает алерт
-    @State private var showZmanimStubAlert: Bool = false
+    @State private var showZmanimSheet: Bool = false
+    @State private var zmanimDate: Date = Date()
+    @State private var zmanimSelections: [UUID: ZmanOpinion] = [:]
+    @State private var activeZmanItem: ZmanItem?
 
     @AppStorage("selectedNusach") private var selectedNusach: Nusach = .edotHaMizrach
     @AppStorage("startWithZimun") private var startWithZimun: Bool = false
@@ -219,6 +327,14 @@ struct ContentView: View {
         UIDevice.current.userInterfaceIdiom == .phone
     }
 
+    private let zmanimProvider = ZmanimProvider()
+    private let gregorianFormatter: DateFormatter = {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "ru_RU")
+        df.dateStyle = .full
+        return df
+    }()
+
     /// Максимальная ширина сегментов — учитываем кнопки по бокам
     private var segmentedMaxWidth: CGFloat {
         let screenWidth = UIScreen.main.bounds.width
@@ -235,6 +351,10 @@ struct ContentView: View {
 
     private var jewishInfo: JewishDayInfo {
         HebrewDateHelper.shared.currentInfo()
+    }
+
+    private var currentZmanim: [ZmanItem] {
+        zmanimProvider.zmanim(for: zmanimDate)
     }
 
     // ---------------------------------------------------------
@@ -289,11 +409,24 @@ struct ContentView: View {
                 settingsOverlay
             }
         }
-        .alert("זמני היום יהיו כאן",
-               isPresented: $showZmanimStubAlert) {
-            Button("סגור", role: .cancel) {}
-        } message: {
-            Text("המסך עדיין בפיתוח")
+        .sheet(isPresented: $showZmanimSheet) {
+            ZmanimSheet(
+                isPresented: $showZmanimSheet,
+                date: $zmanimDate,
+                gregorianFormatter: gregorianFormatter,
+                currentZmanim: currentZmanim,
+                selectedOpinions: $zmanimSelections,
+                activeZmanItem: $activeZmanItem,
+                hebrewInfo: { date in
+                    HebrewDateHelper.shared.info(for: date)
+                },
+                pickOpinion: { item, opinion in
+                    zmanimSelections[item.id] = opinion
+                    lightHaptic()
+                },
+                haptic: lightHaptic
+            )
+            .environment(\.layoutDirection, .rightToLeft)
         }
         .environment(\.layoutDirection, .rightToLeft)
     }
@@ -381,7 +514,7 @@ struct ContentView: View {
     private var zmanimButton: some View {
         Button {
             lightHaptic()
-            showZmanimStubAlert = true
+            showZmanimSheet = true
         } label: {
             Image(systemName: "sun.max")
                 .font(.system(size: isPhone ? 14 : 16, weight: .regular))
@@ -532,6 +665,167 @@ struct ContentView: View {
         .padding(.top, 6)
         .padding(.horizontal, 12)
         .padding(.bottom, 6)
+    }
+}
+
+// ---------------------------------------------------------
+// ZMANIM SHEET
+// ---------------------------------------------------------
+
+struct ZmanimSheet: View {
+
+    @Binding var isPresented: Bool
+    @Binding var date: Date
+    let gregorianFormatter: DateFormatter
+    let currentZmanim: [ZmanItem]
+    @Binding var selectedOpinions: [UUID: ZmanOpinion]
+    @Binding var activeZmanItem: ZmanItem?
+
+    let hebrewInfo: (Date) -> JewishDayInfo
+    let pickOpinion: (ZmanItem, ZmanOpinion) -> Void
+    let haptic: () -> Void
+
+    private var hebrewDateText: String {
+        hebrewInfo(date).hebrewDate
+    }
+
+    private var gregorianDateText: String {
+        gregorianFormatter.string(from: date)
+    }
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 12) {
+                header
+                navigationRow
+                divider
+                list
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 16)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("סגור") { isPresented = false }
+                }
+            }
+        }
+    }
+
+    private var header: some View {
+        VStack(spacing: 4) {
+            Text(hebrewDateText)
+                .font(.headline)
+            Text(gregorianDateText)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    private var navigationRow: some View {
+        HStack(spacing: 12) {
+            Button {
+                shiftDate(by: -1)
+            } label: {
+                Image(systemName: "chevron.backward")
+                    .padding(10)
+                    .background(Circle().fill(Color.gray.opacity(0.12)))
+            }
+
+            Button("היום") {
+                date = Date()
+                haptic()
+            }
+            .font(.subheadline.weight(.semibold))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(Capsule().fill(Color.gray.opacity(0.12)))
+
+            Button {
+                shiftDate(by: 1)
+            } label: {
+                Image(systemName: "chevron.forward")
+                    .padding(10)
+                    .background(Circle().fill(Color.gray.opacity(0.12)))
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var divider: some View {
+        Rectangle()
+            .fill(Color.gray.opacity(0.18))
+            .frame(height: 1)
+            .padding(.horizontal, -16)
+    }
+
+    private var list: some View {
+        ScrollView {
+            LazyVStack(spacing: 10) {
+                ForEach(currentZmanim) { item in
+                    Button {
+                        activeZmanItem = item
+                    } label: {
+                        HStack(alignment: .center, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(item.title)
+                                    .font(.headline)
+
+                                if let subtitle = item.subtitle {
+                                    Text(subtitle)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Text(selectedOpinions[item.id]?.title ?? "בחר דעה")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+
+                            Spacer()
+
+                            Text(selectedOpinions[item.id]?.time ?? item.defaultOpinion.time)
+                                .font(.title3.weight(.semibold))
+                                .monospacedDigit()
+                        }
+                        .padding(14)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color.gray.opacity(0.08))
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.bottom, 20)
+        }
+        .confirmationDialog(
+            "בחר דעה עבור הזמן",
+            isPresented: Binding(
+                get: { activeZmanItem != nil },
+                set: { newValue in if !newValue { activeZmanItem = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let item = activeZmanItem {
+                ForEach(item.opinions) { opinion in
+                    Button(opinion.title) {
+                        pickOpinion(item, opinion)
+                        activeZmanItem = nil
+                    }
+                }
+                Button("ביטול", role: .cancel) {
+                    activeZmanItem = nil
+                }
+            }
+        }
+    }
+
+    private func shiftDate(by days: Int) {
+        if let newDate = Calendar.current.date(byAdding: .day, value: days, to: date) {
+            date = newDate
+            haptic()
+        }
     }
 }
 
