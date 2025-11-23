@@ -1,6 +1,8 @@
 import SwiftUI
 import UIKit
 
+private let israelTimeZone = TimeZone(identifier: "Asia/Jerusalem") ?? .current
+
 // ---------------------------------------------------------
 // JEWISH DATE HELPER (без сторонних библиотек)
 // ---------------------------------------------------------
@@ -47,10 +49,15 @@ struct ZmanItem: Identifiable, Hashable {
 /// наглядный список с лёгким смещением по датам, чтобы показать поведение
 /// интерфейса и выбор «по какому мнению».
 final class ZmanimProvider {
-    private let gregorianCalendar = Calendar(identifier: .gregorian)
+    private let gregorianCalendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = israelTimeZone
+        return calendar
+    }()
     private let hebrewCalendar: Calendar = {
         var cal = Calendar(identifier: .hebrew)
         cal.locale = Locale(identifier: "he_IL")
+        cal.timeZone = israelTimeZone
         return cal
     }()
 
@@ -127,6 +134,7 @@ final class ZmanimProvider {
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
         formatter.locale = Locale(identifier: "he_IL")
+        formatter.timeZone = israelTimeZone
         return formatter.string(from: components.date!)
     }
 }
@@ -143,11 +151,13 @@ final class HebrewDateHelper {
     private init() {
         var cal = Calendar(identifier: .hebrew)
         cal.locale = Locale(identifier: "he_IL")
+        cal.timeZone = israelTimeZone
         self.hebrewCalendar = cal
 
         let mf = DateFormatter()
         mf.calendar = cal
         mf.locale = Locale(identifier: "he_IL")
+        mf.timeZone = israelTimeZone
         mf.dateFormat = "MMMM"      // только название месяца
         self.monthFormatter = mf
     }
@@ -368,6 +378,7 @@ struct ContentView: View {
     private let gregorianFormatter: DateFormatter = {
         let df = DateFormatter()
         df.locale = Locale(identifier: "ru_RU")
+        df.timeZone = israelTimeZone
         df.dateStyle = .full
         return df
     }()
