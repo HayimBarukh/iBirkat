@@ -15,18 +15,31 @@ struct JewishDayInfo {
 // ---------------------------------------------------------
 
 struct ZmanOpinion: Identifiable, Hashable {
-    let id = UUID()
+    let id: String
     let title: String
     let time: String
+
+    init(id: String? = nil, title: String, time: String) {
+        self.id = id ?? title
+        self.title = title
+        self.time = time
+    }
 }
 
 struct ZmanItem: Identifiable, Hashable {
-    let id = UUID()
+    let id: String
     let title: String
     let opinions: [ZmanOpinion]
     let subtitle: String?
 
     var defaultOpinion: ZmanOpinion { opinions.first! }
+
+    init(id: String? = nil, title: String, opinions: [ZmanOpinion], subtitle: String? = nil) {
+        self.id = id ?? title
+        self.title = title
+        self.opinions = opinions
+        self.subtitle = subtitle
+    }
 }
 
 /// Мини-провайдер времён. В реальном приложении эти времена нужно брать из
@@ -50,37 +63,38 @@ final class ZmanimProvider {
         let chatzot = (sunrise + sunset) / 2
 
         var list: [ZmanItem] = [
-            buildItem(title: "עלות השחר", base: sunrise - 90, offset: offset),
-            buildItem(title: "משיכיר", base: sunrise - 50, offset: offset),
-            buildItem(title: "נץ החמה", base: sunrise, offset: offset),
-            buildItem(title: "סוף זמן ק""ש (מגן אברהם)", base: sunrise + 180, offset: offset),
-            buildItem(title: "סוף זמן ק""ש (הגר""א)", base: sunrise + 198, offset: offset),
-            buildItem(title: "סוף זמן תפילה", base: sunrise + 264, offset: offset),
-            buildItem(title: "חצות היום", base: chatzot, offset: offset),
-            buildItem(title: "מנחה גדולה", base: chatzot + 30, offset: offset),
-            buildItem(title: "מנחה קטנה", base: sunset - 150, offset: offset),
-            buildItem(title: "פלג המנחה", base: sunset - 75, offset: offset),
-            buildItem(title: "שקיעה", base: sunset, offset: offset),
-            buildItem(title: "צאת הכוכבים", base: sunset + 25, offset: offset)
+            buildItem(title: "עלות השחר", base: sunrise - 90),
+            buildItem(title: "משיכיר", base: sunrise - 50),
+            buildItem(title: "נץ החמה", base: sunrise),
+            buildItem(title: "סוף זמן ק״ש (מגן אברהם)", base: sunrise + 180),
+            buildItem(title: "סוף זמן ק״ש (הגר״א)", base: sunrise + 198),
+            buildItem(title: "סוף זמן תפילה", base: sunrise + 264),
+            buildItem(title: "חצות היום", base: chatzot),
+            buildItem(title: "מנחה גדולה", base: chatzot + 30),
+            buildItem(title: "מנחה קטנה", base: sunset - 150),
+            buildItem(title: "פלג המנחה", base: sunset - 75),
+            buildItem(title: "שקיעה", base: sunset),
+            buildItem(title: "צאת הכוכבים", base: sunset + 25)
         ]
 
         if shouldShowCandleLighting(for: date) {
             let candleTime = sunset - 18
             let subtitle = isFriday(date) ? "הדלקת נרות ערב שבת" : "הדלקת נרות ערב חג"
-            list.insert(buildItem(title: "הדלקת נרות", base: candleTime, offset: offset, subtitle: subtitle), at: 0)
+            list.insert(buildItem(title: "הדלקת נרות", base: candleTime, subtitle: subtitle), at: 0)
         }
 
         return list
     }
 
-    private func buildItem(title: String, base: Int, offset: Int, subtitle: String? = nil) -> ZmanItem {
+    private func buildItem(title: String, base: Int, subtitle: String? = nil) -> ZmanItem {
+        let baseId = title
         let opinions = [
-            ZmanOpinion(title: "לפי הרב עובדיה", time: timeString(from: base)),
-            ZmanOpinion(title: "לפי החזון איש", time: timeString(from: base + 3)),
-            ZmanOpinion(title: "לפי הגר""א", time: timeString(from: base - 2))
+            ZmanOpinion(id: "\(baseId)-ovadia", title: "לפי הרב עובדיה", time: timeString(from: base)),
+            ZmanOpinion(id: "\(baseId)-hazon", title: "לפי החזון איש", time: timeString(from: base + 3)),
+            ZmanOpinion(id: "\(baseId)-gra", title: "לפי הגר״א", time: timeString(from: base - 2))
         ]
 
-        return ZmanItem(title: title, opinions: opinions, subtitle: subtitle)
+        return ZmanItem(id: baseId, title: title, opinions: opinions, subtitle: subtitle)
     }
 
     private func shouldShowCandleLighting(for date: Date) -> Bool {
@@ -331,7 +345,7 @@ struct ContentView: View {
     @State private var showSettings: Bool = false
     @State private var showZmanimSheet: Bool = false
     @State private var zmanimDate: Date = Date()
-    @State private var zmanimSelections: [UUID: ZmanOpinion] = [:]
+    @State private var zmanimSelections: [String: ZmanOpinion] = [:]
     @State private var activeZmanItem: ZmanItem?
 
     @AppStorage("selectedNusach") private var selectedNusach: Nusach = .edotHaMizrach
@@ -701,7 +715,7 @@ struct ZmanimSheet: View {
     @Binding var date: Date
     let gregorianFormatter: DateFormatter
     let currentZmanim: [ZmanItem]
-    @Binding var selectedOpinions: [UUID: ZmanOpinion]
+    @Binding var selectedOpinions: [String: ZmanOpinion]
     @Binding var activeZmanItem: ZmanItem?
 
     let hebrewInfo: (Date) -> JewishDayInfo
