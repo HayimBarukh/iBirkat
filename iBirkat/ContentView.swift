@@ -15,18 +15,31 @@ struct JewishDayInfo {
 // ---------------------------------------------------------
 
 struct ZmanOpinion: Identifiable, Hashable {
-    let id = UUID()
+    let id: String
     let title: String
     let time: String
+
+    init(id: String? = nil, title: String, time: String) {
+        self.id = id ?? title
+        self.title = title
+        self.time = time
+    }
 }
 
 struct ZmanItem: Identifiable, Hashable {
-    let id = UUID()
+    let id: String
     let title: String
     let opinions: [ZmanOpinion]
     let subtitle: String?
 
     var defaultOpinion: ZmanOpinion { opinions.first! }
+
+    init(id: String? = nil, title: String, opinions: [ZmanOpinion], subtitle: String? = nil) {
+        self.id = id ?? title
+        self.title = title
+        self.opinions = opinions
+        self.subtitle = subtitle
+    }
 }
 
 /// Мини-провайдер времён. В реальном приложении эти времена нужно брать из
@@ -74,13 +87,14 @@ final class ZmanimProvider {
     }
 
     private func buildItem(title: String, base: Int, offset: Int, subtitle: String? = nil) -> ZmanItem {
+        let baseId = title
         let opinions = [
-            ZmanOpinion(title: "לפי הרב עובדיה", time: timeString(from: base)),
-            ZmanOpinion(title: "לפי החזון איש", time: timeString(from: base + 3)),
-            ZmanOpinion(title: "לפי הגר""א", time: timeString(from: base - 2))
+            ZmanOpinion(id: "\(baseId)-ovadia", title: "לפי הרב עובדיה", time: timeString(from: base)),
+            ZmanOpinion(id: "\(baseId)-hazon", title: "לפי החזון איש", time: timeString(from: base + 3)),
+            ZmanOpinion(id: "\(baseId)-gra", title: "לפי הגר""א", time: timeString(from: base - 2))
         ]
 
-        return ZmanItem(title: title, opinions: opinions, subtitle: subtitle)
+        return ZmanItem(id: baseId, title: title, opinions: opinions, subtitle: subtitle)
     }
 
     private func shouldShowCandleLighting(for date: Date) -> Bool {
@@ -331,7 +345,7 @@ struct ContentView: View {
     @State private var showSettings: Bool = false
     @State private var showZmanimSheet: Bool = false
     @State private var zmanimDate: Date = Date()
-    @State private var zmanimSelections: [UUID: ZmanOpinion] = [:]
+    @State private var zmanimSelections: [String: ZmanOpinion] = [:]
     @State private var activeZmanItem: ZmanItem?
 
     @AppStorage("selectedNusach") private var selectedNusach: Nusach = .edotHaMizrach
@@ -701,7 +715,7 @@ struct ZmanimSheet: View {
     @Binding var date: Date
     let gregorianFormatter: DateFormatter
     let currentZmanim: [ZmanItem]
-    @Binding var selectedOpinions: [UUID: ZmanOpinion]
+    @Binding var selectedOpinions: [String: ZmanOpinion]
     @Binding var activeZmanItem: ZmanItem?
 
     let hebrewInfo: (Date) -> JewishDayInfo
