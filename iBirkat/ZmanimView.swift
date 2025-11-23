@@ -128,13 +128,12 @@ struct ZmanimView: View {
         }
         // Нижняя панель навигации по датам — прижата к самому низу
         .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 4) {
+            VStack(spacing: 0) {
                 separator
                     .padding(.horizontal, 16)
 
                 bottomNavigationRow
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 4)
             }
             .background(
                 Color(.systemBackground)
@@ -168,7 +167,6 @@ struct ZmanimView: View {
         VStack(spacing: 4) {
             Text("זמני היום · \(cityName)")
                 .font(.headline)
-                .padding(.top, 8)
 
             Text(hebrewInfo.hebrewDate)
                 .font(.subheadline)
@@ -276,7 +274,6 @@ struct ZmanimView: View {
                     }
                 }
             }
-            .padding(.vertical, 6)
         }
     }
 
@@ -375,7 +372,6 @@ struct ZmanimView: View {
             }
         }
         .buttonStyle(.plain)
-        .padding(.vertical, 2)
     }
 
     private func shiftDate(by days: Int) {
