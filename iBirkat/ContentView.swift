@@ -50,6 +50,9 @@ final class HebrewDateHelper {
             return JewishDayInfo(hebrewDate: monthName, special: nil)
         }
 
+        let monthsInYear = hebrewCalendar.range(of: .month, in: .year, for: shiftedDate)?.count ?? 12
+        let isLeapYear = monthsInYear == 13
+
         let dayString = hebrewDayString(day)
         let hebrewDateString = "\(dayString) \(monthName)"
 
@@ -75,9 +78,29 @@ final class HebrewDateHelper {
             tags.append("חנוכה")
         }
 
-        // Пурим — 14 адар (для простоты считаем месяц 7)
-        if month == 7 && day == 14 {
+        // Фиксируем, в каком адуаре мы находимся: в обычный год единственный адар — месяц 6,
+        // в високосный — пурим празднуют только в адар ב׳ (месяц 7).
+        let isAdarForPurim = (!isLeapYear && month == 6) || (isLeapYear && month == 7)
+        let isAdarForPurimKatan = isLeapYear && month == 6
+
+        // פורים — 14 адар (в високосном году: только адар ב׳)
+        if isAdarForPurim && day == 14 {
             tags.append("פורים")
+        }
+
+        // שושן פורים — 15 адар (в високосном году: только адар ב׳)
+        if isAdarForPurim && day == 15 {
+            tags.append("שושן פורים")
+        }
+
+        // פורים קטן — 14 адר א׳ (только в високосный год)
+        if isAdarForPurimKatan && day == 14 {
+            tags.append("פורים קטן")
+        }
+
+        // שושן פורים קטן — 15 адר א׳ (только в високосный год)
+        if isAdarForPurimKatan && day == 15 {
+            tags.append("שושן פורים קטן")
         }
 
         let specialText = tags.isEmpty ? nil : tags.joined(separator: " · ")
