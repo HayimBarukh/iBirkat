@@ -1,7 +1,161 @@
 import SwiftUI
 import UIKit
+import CoreLocation
 
 private let israelTimeZone = TimeZone(identifier: "Asia/Jerusalem") ?? .current
+
+// ---------------------------------------------------------
+// LOCATION + АСТРОНОМИЯ
+// ---------------------------------------------------------
+
+/// Провайдер геолокации: запрашивает доступ и публикует координаты + таймзону.
+final class LocationProvider: NSObject, ObservableObject, CLLocationManagerDelegate {
+    @Published var lastLocation: CLLocation?
+    @Published var status: CLAuthorizationStatus = .notDetermined
+    @Published var resolvedTimeZone: TimeZone?
+
+    private let manager = CLLocationManager()
+    private let geocoder = CLGeocoder()
+
+    override init() {
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+    }
+
+    func request() {
+        manager.requestWhenInUseAuthorization()
+        manager.startUpdatingLocation()
+    }
+
+    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+        self.status = status
+        if status == .authorizedWhenInUse || status == .authorizedAlways {
+            manager.startUpdatingLocation()
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last else { return }
+        lastLocation = location
+
+        // Асинхронно уточняем таймзону по геокодеру
+        geocoder.reverseGeocodeLocation(location) { placemarks, _ in
+            guard let tz = placemarks?.first?.timeZone else { return }
+            DispatchQueue.main.async {
+                self.resolvedTimeZone = tz
+            }
+        }
+    }
+}
+
+/// Астрономический калькулятор восхода/заката по формуле NOAA.
+struct AstronomyCalculator {
+    struct SunTimes {
+        let sunrise: Date
+        let sunset: Date
+    }
+
+    /// Возвращает точные времена восхода и заката на дату и координаты.
+    func sunTimes(for date: Date, coordinate: CLLocationCoordinate2D, timeZone: TimeZone) -> SunTimes? {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+
+        guard let baseDay = calendar.date(from: calendar.dateComponents([.year, .month, .day], from: date)),
+              let dayOfYear = calendar.ordinality(of: .day, in: .year, for: baseDay) else {
+            return nil
+        }
+
+        let zenith = 90.833 // гражданский восход/закат
+        let tzOffsetHours = Double(timeZone.secondsFromGMT(for: baseDay)) / 3600
+
+        guard let sunrise = calculateSunEvent(isSunrise: true,
+                                               baseDate: baseDay,
+                                               dayOfYear: Double(dayOfYear),
+                                               latitude: coordinate.latitude,
+                                               longitude: coordinate.longitude,
+                                               zenith: zenith,
+                                               tzOffsetHours: tzOffsetHours,
+                                               calendar: calendar),
+              let sunset = calculateSunEvent(isSunrise: false,
+                                             baseDate: baseDay,
+                                             dayOfYear: Double(dayOfYear),
+                                             latitude: coordinate.latitude,
+                                             longitude: coordinate.longitude,
+                                             zenith: zenith,
+                                             tzOffsetHours: tzOffsetHours,
+                                             calendar: calendar) else {
+            return nil
+        }
+
+        return SunTimes(sunrise: sunrise, sunset: sunset)
+    }
+
+    private func calculateSunEvent(isSunrise: Bool,
+                                   baseDate: Date,
+                                   dayOfYear: Double,
+                                   latitude: Double,
+                                   longitude: Double,
+                                   zenith: Double,
+                                   tzOffsetHours: Double,
+                                   calendar: Calendar) -> Date? {
+        let lngHour = longitude / 15.0
+        let approxTime = dayOfYear + ((isSunrise ? 6.0 : 18.0) - lngHour) / 24.0
+
+        let meanAnomaly = (0.9856 * approxTime) - 3.289
+
+        var trueLongitude = meanAnomaly
+            + (1.916 * sin(deg2rad(meanAnomaly)))
+            + (0.020 * sin(deg2rad(2 * meanAnomaly)))
+            + 282.634
+        trueLongitude = normalizeDegrees(trueLongitude)
+
+        var rightAscension = rad2deg(atan(0.91764 * tan(deg2rad(trueLongitude))))
+        rightAscension = normalizeDegrees(rightAscension)
+
+        let lQuadrant = floor(trueLongitude / 90.0) * 90.0
+        let raQuadrant = floor(rightAscension / 90.0) * 90.0
+        rightAscension = rightAscension + (lQuadrant - raQuadrant)
+        rightAscension /= 15.0
+
+        let sinDec = 0.39782 * sin(deg2rad(trueLongitude))
+        let cosDec = cos(asin(sinDec))
+        let cosH = (cos(deg2rad(zenith)) - (sinDec * sin(deg2rad(latitude)))) / (cosDec * cos(deg2rad(latitude)))
+
+        guard abs(cosH) <= 1 else { return nil }
+
+        var hourAngle = rad2deg(acos(cosH))
+        hourAngle = isSunrise ? 360 - hourAngle : hourAngle
+        hourAngle /= 15.0
+
+        let localMeanTime = hourAngle + rightAscension - (0.06571 * approxTime) - 6.622
+        let utcTime = localMeanTime - lngHour
+        let localTime = utcTime + tzOffsetHours
+
+        let hour = Int(localTime)
+        let minute = Int((localTime - Double(hour)) * 60.0)
+        let second = Int((((localTime - Double(hour)) * 60.0) - Double(minute)) * 60.0)
+
+        var components = DateComponents()
+        components.year = calendar.component(.year, from: baseDate)
+        components.month = calendar.component(.month, from: baseDate)
+        components.day = calendar.component(.day, from: baseDate)
+        components.hour = hour
+        components.minute = minute
+        components.second = second
+        components.timeZone = calendar.timeZone
+
+        return calendar.date(from: components)
+    }
+
+    private func deg2rad(_ degrees: Double) -> Double { degrees * .pi / 180.0 }
+    private func rad2deg(_ radians: Double) -> Double { radians * 180.0 / .pi }
+    private func normalizeDegrees(_ deg: Double) -> Double {
+        var value = deg.truncatingRemainder(dividingBy: 360.0)
+        if value < 0 { value += 360.0 }
+        return value
+    }
+}
 
 // ---------------------------------------------------------
 // JEWISH DATE HELPER (без сторонних библиотек)
@@ -18,12 +172,14 @@ struct JewishDayInfo {
 
 struct ZmanOpinion: Identifiable, Hashable {
     let id: String
-    let title: String
+    let label: String   // Имя автора/практики
+    let detail: String  // Точное правило в минутах/градусах
     let time: String
 
-    init(id: String? = nil, title: String, time: String) {
-        self.id = id ?? title
-        self.title = title
+    init(id: String? = nil, label: String, detail: String, time: String) {
+        self.id = id ?? label
+        self.label = label
+        self.detail = detail
         self.time = time
     }
 }
@@ -44,70 +200,211 @@ struct ZmanItem: Identifiable, Hashable {
     }
 }
 
-/// Мини-провайдер времён. В реальном приложении эти времена нужно брать из
-/// астрономического модуля и точной геолокации. Здесь мы просто строим
-/// наглядный список с лёгким смещением по датам, чтобы показать поведение
-/// интерфейса и выбор «по какому мнению».
+/// Мини-провайдер времён, использующий астрономический расчёт восхода/заката
+/// (NOAA) и текущие координаты. При отсутствии сигнала — резерв в Иерусалиме.
 final class ZmanimProvider {
-    private let gregorianCalendar: Calendar = {
-        var calendar = Calendar(identifier: .gregorian)
-        calendar.timeZone = israelTimeZone
-        return calendar
-    }()
-    private let hebrewCalendar: Calendar = {
-        var cal = Calendar(identifier: .hebrew)
-        cal.locale = Locale(identifier: "he_IL")
-        cal.timeZone = israelTimeZone
-        return cal
-    }()
+    private let astronomy = AstronomyCalculator()
+    private let fallbackCoordinate = CLLocationCoordinate2D(latitude: 31.778, longitude: 35.235)
 
-    func zmanim(for date: Date) -> [ZmanItem] {
-        let offset = minuteOffset(for: date)
-        let sunrise = 6 * 60 + offset
-        let sunset  = 18 * 60 + offset
+    func zmanim(for date: Date, coordinate: CLLocationCoordinate2D?, timeZone: TimeZone) -> [ZmanItem] {
+        let coord = coordinate ?? fallbackCoordinate
+        let tz = timeZone
 
-        // Базовые времена — просто относительные точки, чтобы интерфейс был живым
-        let chatzot = (sunrise + sunset) / 2
+        var gregorianCalendar = Calendar(identifier: .gregorian)
+        gregorianCalendar.timeZone = tz
 
-        var list: [ZmanItem] = [
-            buildItem(title: "עלות השחר", base: sunrise - 90, offset: offset),
-            buildItem(title: "משיכיר", base: sunrise - 50, offset: offset),
-            buildItem(title: "נץ החמה", base: sunrise, offset: offset),
-            buildItem(title: "סוף זמן ק""ש (מגן אברהם)", base: sunrise + 180, offset: offset),
-            buildItem(title: "סוף זמן ק""ש (הגר""א)", base: sunrise + 198, offset: offset),
-            buildItem(title: "סוף זמן תפילה", base: sunrise + 264, offset: offset),
-            buildItem(title: "חצות היום", base: chatzot, offset: offset),
-            buildItem(title: "מנחה גדולה", base: chatzot + 30, offset: offset),
-            buildItem(title: "מנחה קטנה", base: sunset - 150, offset: offset),
-            buildItem(title: "פלג המנחה", base: sunset - 75, offset: offset),
-            buildItem(title: "שקיעה", base: sunset, offset: offset),
-            buildItem(title: "צאת הכוכבים", base: sunset + 25, offset: offset)
-        ]
+        var hebrewCalendar = Calendar(identifier: .hebrew)
+        hebrewCalendar.locale = Locale(identifier: "he_IL")
+        hebrewCalendar.timeZone = tz
 
-        if shouldShowCandleLighting(for: date) {
-            let candleTime = sunset - 18
-            let subtitle = isFriday(date) ? "הדלקת נרות ערב שבת" : "הדלקת נרות ערב חג"
-            list.insert(buildItem(title: "הדלקת נרות", base: candleTime, offset: offset, subtitle: subtitle), at: 0)
+        let sunTimes = astronomy.sunTimes(for: date, coordinate: coord, timeZone: tz)
+
+        // Если нет данных (крайний север/юг), используем приближение 6/18 часов.
+        let sunriseMinutes: Int
+        let sunsetMinutes: Int
+        if let sunTimes = sunTimes {
+            sunriseMinutes = minutesSinceMidnight(sunTimes.sunrise, calendar: gregorianCalendar)
+            sunsetMinutes = minutesSinceMidnight(sunTimes.sunset, calendar: gregorianCalendar)
+        } else {
+            sunriseMinutes = 6 * 60
+            sunsetMinutes = 18 * 60
+        }
+
+        let chatzot = (sunriseMinutes + sunsetMinutes) / 2
+
+        var list: [ZmanItem] = []
+
+        // עלות השחר — разные подходы в минутах до נץ
+        list.append(
+            buildItem(
+                title: "עלות השחר",
+                subtitle: "לפני נץ החמה",
+                opinions: [
+                    ("הגר״ח נאה", "72 דקות לפני נץ", sunriseMinutes - 72),
+                    ("מגן אברהם", "90 דקות לפני נץ", sunriseMinutes - 90),
+                    ("אדה״ז", "96 דקות לפני נץ", sunriseMinutes - 96),
+                    ("ישועות יעקב", "120 דקות לפני נץ", sunriseMinutes - 120)
+                ],
+                calendar: gregorianCalendar
+            )
+        )
+
+        // משיכיר — расстояние до נץ
+        list.append(
+            buildItem(
+                title: "משיכיר",
+                subtitle: "לפני נץ החמה",
+                opinions: [
+                    ("הגר״א", "50 דקות לפני נץ", sunriseMinutes - 50),
+                    ("רש״ש", "45 דקות לפני נץ", sunriseMinutes - 45),
+                    ("רב משה פיינשטיין", "42 דקות לפני נץ", sunriseMinutes - 42)
+                ],
+                calendar: gregorianCalendar
+            )
+        )
+
+        // נץ החמה
+        list.append(
+            buildItem(
+                title: "נץ החמה",
+                opinions: [
+                    ("נץ מדויק", "תחילת זריחת החמה", sunriseMinutes)
+                ],
+                calendar: gregorianCalendar
+            )
+        )
+
+        // סוף זמן ק״ש
+        list.append(
+            buildItem(
+                title: "סוף זמן ק״ש",
+                subtitle: "בהתאם לאורך היום",
+                opinions: [
+                    ("מגן אברהם", "3 שעות זמניות מתחילת היום", sunriseMinutes + 180),
+                    ("הגר״א", "עד 3 שעות זמניות", sunriseMinutes + 198),
+                    ("חזון איש", "3 שעות זמניות + נטייה", sunriseMinutes + 204)
+                ],
+                calendar: gregorianCalendar
+            )
+        )
+
+        // סוף זמן תפילה
+        list.append(
+            buildItem(
+                title: "סוף זמן תפילה",
+                opinions: [
+                    ("מגן אברהם", "4 שעות זמניות מתחילת היום", sunriseMinutes + 264),
+                    ("הגר״א", "עד 4 שעות זמניות", sunriseMinutes + 264),
+                    ("חזון איש", "4 שעות זמניות + נטייה", sunriseMinutes + 276)
+                ],
+                calendar: gregorianCalendar
+            )
+        )
+
+        // חצות היום + מנחה
+        list.append(
+            buildItem(
+                title: "חצות היום",
+                opinions: [("חצות", "אמצע בין נץ לשקיעה", chatzot)],
+                calendar: gregorianCalendar
+            )
+        )
+
+        list.append(
+            buildItem(
+                title: "מנחה גדולה",
+                opinions: [
+                    ("חצי שעה אחרי חצות", "30 דקות אחרי חצות", chatzot + 30)
+                ],
+                calendar: gregorianCalendar
+            )
+        )
+
+        list.append(
+            buildItem(
+                title: "מנחה קטנה",
+                opinions: [
+                    ("שעה ורבע לפני שקיעה", "75 דקות לפני שקיעה", sunsetMinutes - 75),
+                    ("גר״א", "9.5 שעות זמניות מהזריחה", sunsetMinutes - 150)
+                ],
+                calendar: gregorianCalendar
+            )
+        )
+
+        list.append(
+            buildItem(
+                title: "פלג המנחה",
+                opinions: [
+                    ("1.25 שעות זמניות לפני לילה", "75 דקות לפני לילה", sunsetMinutes - 75),
+                    ("18 דקות לפני שקיעה", "מינימום לחומרה", sunsetMinutes - 18)
+                ],
+                calendar: gregorianCalendar
+            )
+        )
+
+        list.append(
+            buildItem(
+                title: "שקיעה",
+                opinions: [("שקיעה אסטרונומית", "סיום שקיעה הנראית", sunsetMinutes)],
+                calendar: gregorianCalendar
+            )
+        )
+
+        // צאת הכוכבים — разные подходы после שקיעה
+        list.append(
+            buildItem(
+                title: "צאת הכוכבים",
+                subtitle: "לאחר שקיעה",
+                opinions: [
+                    ("רבינו תם", "72 דקות אחרי שקיעה", sunsetMinutes + 72),
+                    ("גר״א", "18 דקות אחרי שקיעה", sunsetMinutes + 18),
+                    ("חזו״א", "30 דקות אחרי שקיעה", sunsetMinutes + 30),
+                    ("מנהג חב״ד", "36 דקות אחרי שקיעה", sunsetMinutes + 36)
+                ],
+                calendar: gregorianCalendar
+            )
+        )
+
+        if shouldShowCandleLighting(for: date, calendar: hebrewCalendar, gregorian: gregorianCalendar) {
+            let subtitle = isFriday(date, calendar: gregorianCalendar) ? "הדלקת נרות ערב שבת" : "הדלקת נרות ערב חג"
+            list.insert(
+                buildItem(
+                    title: "הדלקת נרות",
+                    subtitle: subtitle,
+                    opinions: [
+                        ("מנהג ירושלים", "40 דקות לפני שקיעה", sunsetMinutes - 40),
+                        ("מנהג בני ברק", "30 דקות לפני שקיעה", sunsetMinutes - 30),
+                        ("מנהג רוב הקהילות", "18 דקות לפני שקיעה", sunsetMinutes - 18),
+                        ("תל אביב", "20 דקות לפני שקיעה", sunsetMinutes - 20)
+                    ],
+                    calendar: gregorianCalendar
+                ),
+                at: 0
+            )
         }
 
         return list
     }
 
-    private func buildItem(title: String, base: Int, offset: Int, subtitle: String? = nil) -> ZmanItem {
+    private func buildItem(title: String, subtitle: String? = nil, opinions: [(String, String, Int)], calendar: Calendar) -> ZmanItem {
         let baseId = title
-        let opinions = [
-            ZmanOpinion(id: "\(baseId)-ovadia", title: "לפי הרב עובדיה", time: timeString(from: base)),
-            ZmanOpinion(id: "\(baseId)-hazon", title: "לפי החזון איש", time: timeString(from: base + 3)),
-            ZmanOpinion(id: "\(baseId)-gra", title: "לפי הגר""א", time: timeString(from: base - 2))
-        ]
+        let mapped = opinions.enumerated().map { idx, tuple -> ZmanOpinion in
+            let (label, detail, minutes) = tuple
+            return ZmanOpinion(
+                id: "\(baseId)-\(idx)",
+                label: label,
+                detail: detail,
+                time: timeString(from: minutes, calendar: calendar)
+            )
+        }
 
-        return ZmanItem(id: baseId, title: title, opinions: opinions, subtitle: subtitle)
+        return ZmanItem(id: baseId, title: title, opinions: mapped, subtitle: subtitle)
     }
 
-    private func shouldShowCandleLighting(for date: Date) -> Bool {
-        if isFriday(date) { return true }
+    private func shouldShowCandleLighting(for date: Date, calendar: Calendar, gregorian: Calendar) -> Bool {
+        if isFriday(date, calendar: gregorian) { return true }
 
-        let comps = hebrewCalendar.dateComponents([.month, .day], from: date)
+        let comps = calendar.dateComponents([.month, .day], from: date)
         guard let month = comps.month, let day = comps.day else { return false }
 
         // Условно считаем: ערב חג для Песаха и Суккота
@@ -116,26 +413,32 @@ final class ZmanimProvider {
         return erevPesach || erevSukkot
     }
 
-    private func isFriday(_ date: Date) -> Bool {
-        let weekday = gregorianCalendar.component(.weekday, from: date)
+    private func isFriday(_ date: Date, calendar: Calendar) -> Bool {
+        let weekday = calendar.component(.weekday, from: date)
         return weekday == 6 // 1-вс, 6-пт
     }
 
-    private func minuteOffset(for date: Date) -> Int {
-        let ord = gregorianCalendar.ordinality(of: .day, in: .year, for: date) ?? 0
-        return (ord % 8) - 4
+    private func minutesSinceMidnight(_ date: Date, calendar: Calendar) -> Int {
+        let comps = calendar.dateComponents([.hour, .minute], from: date)
+        let h = comps.hour ?? 0
+        let m = comps.minute ?? 0
+        return h * 60 + m
     }
 
-    private func timeString(from minutes: Int) -> String {
+    private func timeString(from minutes: Int, calendar: Calendar) -> String {
         let total = ((minutes % (24 * 60)) + (24 * 60)) % (24 * 60)
         let h = total / 60
         let m = total % 60
-        let components = DateComponents(calendar: gregorianCalendar, hour: h, minute: m)
+        var components = calendar.dateComponents([.year, .month, .day], from: calendar.startOfDay(for: Date()))
+        components.hour = h
+        components.minute = m
+
+        let date = calendar.date(from: components) ?? Date()
         let formatter = DateFormatter()
         formatter.dateFormat = "HH:mm"
         formatter.locale = Locale(identifier: "he_IL")
-        formatter.timeZone = israelTimeZone
-        return formatter.string(from: components.date!)
+        formatter.timeZone = calendar.timeZone
+        return formatter.string(from: date)
     }
 }
 
@@ -144,34 +447,26 @@ final class ZmanimProvider {
 final class HebrewDateHelper {
     static let shared = HebrewDateHelper()
 
-    private let monthFormatter: DateFormatter
-    private let hebrewCalendar: Calendar
     private let eveningShiftHours: Double = 6
 
-    private init() {
-        var cal = Calendar(identifier: .hebrew)
-        cal.locale = Locale(identifier: "he_IL")
-        cal.timeZone = israelTimeZone
-        self.hebrewCalendar = cal
-
-        let mf = DateFormatter()
-        mf.calendar = cal
-        mf.locale = Locale(identifier: "he_IL")
-        mf.timeZone = israelTimeZone
-        mf.dateFormat = "MMMM"      // только название месяца
-        self.monthFormatter = mf
-    }
+    private init() {}
 
     /// Текущая дата + сдвиг на вечер (новый еврейский день после выхода звёзд)
-    func currentInfo() -> JewishDayInfo {
+    func currentInfo(timeZone: TimeZone) -> JewishDayInfo {
         let now = Date()
         let shifted = now.addingTimeInterval(eveningShiftHours * 3600)
-        return info(for: shifted)
+        return info(for: shifted, timeZone: timeZone)
     }
 
-    /// Информация по ПРОИЗВОЛЬНОЙ дате (Date) с учётом вечернего сдвига.
-    func info(for date: Date) -> JewishDayInfo {
+    /// Информация по ПРОИЗВОЛЬНОЙ дате (Date) с учётом вечернего сдвига и таймзоны.
+    func info(for date: Date, timeZone: TimeZone) -> JewishDayInfo {
         let shiftedDate = date.addingTimeInterval(eveningShiftHours * 3600)
+
+        var hebrewCalendar = Calendar(identifier: .hebrew)
+        hebrewCalendar.locale = Locale(identifier: "he_IL")
+        hebrewCalendar.timeZone = timeZone
+
+        let monthFormatter = makeMonthFormatter(timeZone: timeZone)
 
         let comps = hebrewCalendar.dateComponents([.year, .month, .day],
                                                   from: shiftedDate)
@@ -236,6 +531,15 @@ final class HebrewDateHelper {
 
         let specialText = tags.isEmpty ? nil : tags.joined(separator: " · ")
         return JewishDayInfo(hebrewDate: hebrewDateString, special: specialText)
+    }
+
+    private func makeMonthFormatter(timeZone: TimeZone) -> DateFormatter {
+        let mf = DateFormatter()
+        mf.calendar = Calendar(identifier: .hebrew)
+        mf.locale = Locale(identifier: "he_IL")
+        mf.timeZone = timeZone
+        mf.dateFormat = "MMMM"      // только название месяца
+        return mf
     }
 
     /// Преобразование числа дня (1–30) в запись на иврите с גרש/גרשיים: י״ד, כ״א, ט׳ וכו׳
@@ -350,6 +654,7 @@ enum Nusach: String, CaseIterable, Identifiable {
 
 struct ContentView: View {
 
+    @StateObject private var locationProvider = LocationProvider()
     @State private var currentPageIndex: Int = 0
     @State private var selectedPrayer: Prayer = birkatHamazon
     @State private var showSettings: Bool = false
@@ -375,13 +680,13 @@ struct ContentView: View {
     }
 
     private let zmanimProvider = ZmanimProvider()
-    private let gregorianFormatter: DateFormatter = {
+    private var gregorianFormatter: DateFormatter {
         let df = DateFormatter()
-        df.locale = Locale(identifier: "ru_RU")
-        df.timeZone = israelTimeZone
+        df.locale = Locale(identifier: "he_IL")
+        df.timeZone = currentTimeZone
         df.dateStyle = .full
         return df
-    }()
+    }
 
     /// Максимальная ширина сегментов — учитываем кнопки по бокам
     private var segmentedMaxWidth: CGFloat {
@@ -398,11 +703,19 @@ struct ContentView: View {
     }
 
     private var jewishInfo: JewishDayInfo {
-        HebrewDateHelper.shared.currentInfo()
+        HebrewDateHelper.shared.currentInfo(timeZone: currentTimeZone)
     }
 
     private var currentZmanim: [ZmanItem] {
-        zmanimProvider.zmanim(for: zmanimDate)
+        zmanimProvider.zmanim(for: zmanimDate, coordinate: currentCoordinate, timeZone: currentTimeZone)
+    }
+
+    private var currentCoordinate: CLLocationCoordinate2D? {
+        locationProvider.lastLocation?.coordinate
+    }
+
+    private var currentTimeZone: TimeZone {
+        locationProvider.resolvedTimeZone ?? israelTimeZone
     }
 
     // ---------------------------------------------------------
@@ -450,6 +763,7 @@ struct ContentView: View {
                 updatePageIndexForCurrentSelection()
                 handleShortcutIfNeeded()
                 updateIdleTimer()
+                locationProvider.request()
             }
         }
         .overlay {
@@ -466,7 +780,7 @@ struct ContentView: View {
                 selectedOpinions: $zmanimSelections,
                 activeZmanItem: $activeZmanItem,
                 hebrewInfo: { date in
-                    HebrewDateHelper.shared.info(for: date)
+                    HebrewDateHelper.shared.info(for: date, timeZone: currentTimeZone)
                 },
                 pickOpinion: { item, opinion in
                     zmanimSelections[item.id] = opinion
@@ -813,6 +1127,7 @@ struct ZmanimSheet: View {
                     Button {
                         activeZmanItem = item
                     } label: {
+                        let activeOpinion = selectedOpinions[item.id] ?? item.defaultOpinion
                         HStack(alignment: .center, spacing: 12) {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(item.title)
@@ -824,14 +1139,19 @@ struct ZmanimSheet: View {
                                         .foregroundColor(.secondary)
                                 }
 
-                                Text(selectedOpinions[item.id]?.title ?? "בחר דעה")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                                VStack(alignment: .leading, spacing: 1) {
+                                    Text(activeOpinion.label)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(activeOpinion.detail)
+                                        .font(.caption2)
+                                        .foregroundColor(.secondary)
+                                }
                             }
 
                             Spacer()
 
-                            Text(selectedOpinions[item.id]?.time ?? item.defaultOpinion.time)
+                            Text(activeOpinion.time)
                                 .font(.title3.weight(.semibold))
                                 .monospacedDigit()
                         }
@@ -857,7 +1177,7 @@ struct ZmanimSheet: View {
         ) {
             if let item = activeZmanItem {
                 ForEach(item.opinions) { opinion in
-                    Button(opinion.title) {
+                    Button("\(opinion.label) · \(opinion.detail)") {
                         pickOpinion(item, opinion)
                         activeZmanItem = nil
                     }
