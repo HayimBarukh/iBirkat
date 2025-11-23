@@ -21,7 +21,7 @@ struct ZmanOpinion: Identifiable, Hashable {
 }
 
 struct ZmanItem: Identifiable, Hashable {
-    let id = UUID()
+    let id: String
     let title: String
     let opinions: [ZmanOpinion]
     let subtitle: String?
@@ -50,37 +50,45 @@ final class ZmanimProvider {
         let chatzot = (sunrise + sunset) / 2
 
         var list: [ZmanItem] = [
-            buildItem(title: "עלות השחר", base: sunrise - 90, offset: offset),
-            buildItem(title: "משיכיר", base: sunrise - 50, offset: offset),
-            buildItem(title: "נץ החמה", base: sunrise, offset: offset),
-            buildItem(title: "סוף זמן ק""ש (מגן אברהם)", base: sunrise + 180, offset: offset),
-            buildItem(title: "סוף זמן ק""ש (הגר""א)", base: sunrise + 198, offset: offset),
-            buildItem(title: "סוף זמן תפילה", base: sunrise + 264, offset: offset),
-            buildItem(title: "חצות היום", base: chatzot, offset: offset),
-            buildItem(title: "מנחה גדולה", base: chatzot + 30, offset: offset),
-            buildItem(title: "מנחה קטנה", base: sunset - 150, offset: offset),
-            buildItem(title: "פלג המנחה", base: sunset - 75, offset: offset),
-            buildItem(title: "שקיעה", base: sunset, offset: offset),
-            buildItem(title: "צאת הכוכבים", base: sunset + 25, offset: offset)
+            buildItem(title: "עלות השחר", base: sunrise - 90, offset: offset, date: date),
+            buildItem(title: "משיכיר", base: sunrise - 50, offset: offset, date: date),
+            buildItem(title: "נץ החמה", base: sunrise, offset: offset, date: date),
+            buildItem(title: "סוף זמן ק""ש (מגן אברהם)", base: sunrise + 180, offset: offset, date: date),
+            buildItem(title: "סוף זמן ק""ש (הגר""א)", base: sunrise + 198, offset: offset, date: date),
+            buildItem(title: "סוף זמן תפילה", base: sunrise + 264, offset: offset, date: date),
+            buildItem(title: "חצות היום", base: chatzot, offset: offset, date: date),
+            buildItem(title: "מנחה גדולה", base: chatzot + 30, offset: offset, date: date),
+            buildItem(title: "מנחה קטנה", base: sunset - 150, offset: offset, date: date),
+            buildItem(title: "פלג המנחה", base: sunset - 75, offset: offset, date: date),
+            buildItem(title: "שקיעה", base: sunset, offset: offset, date: date),
+            buildItem(title: "צאת הכוכבים", base: sunset + 25, offset: offset, date: date)
         ]
 
         if shouldShowCandleLighting(for: date) {
             let candleTime = sunset - 18
             let subtitle = isFriday(date) ? "הדלקת נרות ערב שבת" : "הדלקת נרות ערב חג"
-            list.insert(buildItem(title: "הדלקת נרות", base: candleTime, offset: offset, subtitle: subtitle), at: 0)
+            list.insert(
+                buildItem(title: "הדלקת נרות", base: candleTime, offset: offset, subtitle: subtitle, date: date),
+                at: 0
+            )
         }
 
         return list
     }
 
-    private func buildItem(title: String, base: Int, offset: Int, subtitle: String? = nil) -> ZmanItem {
+    private func buildItem(title: String, base: Int, offset: Int, subtitle: String? = nil, date: Date) -> ZmanItem {
         let opinions = [
             ZmanOpinion(title: "לפי הרב עובדיה", time: timeString(from: base)),
             ZmanOpinion(title: "לפי החזון איש", time: timeString(from: base + 3)),
             ZmanOpinion(title: "לפי הגר""א", time: timeString(from: base - 2))
         ]
 
-        return ZmanItem(title: title, opinions: opinions, subtitle: subtitle)
+        return ZmanItem(
+            id: itemID(title: title, subtitle: subtitle, date: date),
+            title: title,
+            opinions: opinions,
+            subtitle: subtitle
+        )
     }
 
     private func shouldShowCandleLighting(for date: Date) -> Bool {
@@ -103,6 +111,18 @@ final class ZmanimProvider {
     private func minuteOffset(for date: Date) -> Int {
         let ord = gregorianCalendar.ordinality(of: .day, in: .year, for: date) ?? 0
         return (ord % 8) - 4
+    }
+
+    private func itemID(title: String, subtitle: String?, date: Date) -> String {
+        "\(title)|\(subtitle ?? "")|\(dayKey(for: date))"
+    }
+
+    private func dayKey(for date: Date) -> String {
+        let comps = gregorianCalendar.dateComponents([.year, .month, .day], from: date)
+        let year = comps.year ?? 0
+        let month = comps.month ?? 0
+        let day = comps.day ?? 0
+        return String(format: "%04d-%02d-%02d", year, month, day)
     }
 
     private func timeString(from minutes: Int) -> String {
