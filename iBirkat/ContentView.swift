@@ -24,7 +24,19 @@ struct ContentView: View {
     }
 
     private var isPhone: Bool {
-        UIDevice.current.userInterfaceIdiom == .phone
+        let idiom = UIDevice.current.userInterfaceIdiom
+
+        if idiom == .pad || idiom == .mac {
+            return false
+        }
+
+        if idiom == .phone {
+            return true
+        }
+
+        // Фолбэк для неопределённых кейсов: большие экраны считаем iPad
+        let maxSide = max(UIScreen.main.bounds.width, UIScreen.main.bounds.height)
+        return maxSide < 900
     }
 
     private var segmentedMaxWidth: CGFloat {

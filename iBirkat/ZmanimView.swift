@@ -78,7 +78,6 @@ struct ZmanimView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let topInset = proxy.safeAreaInsets.top
             let bottomInset = proxy.safeAreaInsets.bottom
 
             ZStack(alignment: .topLeading) {
@@ -138,21 +137,25 @@ struct ZmanimView: View {
                             .padding(.horizontal, 16)
                             .padding(.top, 8)
                             // Минимальный зазор без удвоения safe-area и без лишнего пустого места
-                            .padding(.bottom, bottomInset > 0 ? max(bottomInset - 6, 0) : 8)
+                            .padding(.bottom, bottomInset > 0 ? bottomInset : 8)
                     }
                     .background(
                         Color(.systemBackground)
                             .opacity(0.98)
                     )
                 }
-
-                backFloatingButton
-                    .padding(.top, topInset + 8)
-                    .padding(.leading, 12)
             }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        .safeAreaInset(edge: .top) {
+            HStack {
+                backFloatingButton
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.top, 4)
+        }
     }
 
     // MARK: - Floating back button
