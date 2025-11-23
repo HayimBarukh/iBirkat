@@ -16,7 +16,7 @@ private func saveShortcutPrayerID(from type: String) {
     UserDefaults.standard.set(id, forKey: shortcutKey)
 }
 
-// MARK: - AppDelegate (для холодного старта + создание ярлыков)
+// MARK: - AppDelegate
 
 class AppDelegate: NSObject, UIApplicationDelegate {
 
@@ -25,7 +25,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil
     ) -> Bool {
 
-        // ДИНАМИЧЕСКИЕ ЯРЛЫКИ НА ИКОНКЕ
         let itemBirkat = UIMutableApplicationShortcutItem(
             type: "birkat",
             localizedTitle: "ברכת המזון"
@@ -46,7 +45,6 @@ class AppDelegate: NSObject, UIApplicationDelegate {
         return true
     }
 
-    // ХОЛОДНЫЙ ЗАПУСК через ярлык → сюда прилетает shortcutItem
     func application(
         _ application: UIApplication,
         configurationForConnecting connectingSceneSession: UISceneSession,
@@ -62,12 +60,10 @@ class AppDelegate: NSObject, UIApplicationDelegate {
             sessionRole: connectingSceneSession.role
         )
 
-        // Подключаем наш SceneDelegate
         config.delegateClass = SceneDelegate.self
         return config
     }
 
-    // Только портрет
     func application(
         _ application: UIApplication,
         supportedInterfaceOrientationsFor window: UIWindow?
@@ -76,7 +72,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
     }
 }
 
-// MARK: - SceneDelegate (ярлык, когда приложение уже в фоне)
+// MARK: - SceneDelegate
 
 class SceneDelegate: NSObject, UIWindowSceneDelegate {
 
@@ -95,10 +91,12 @@ class SceneDelegate: NSObject, UIWindowSceneDelegate {
 @main
 struct iBirkatApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @StateObject private var locationManager = LocationManager()
 
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .environmentObject(locationManager)
                 .environment(\.layoutDirection, .rightToLeft)
         }
     }

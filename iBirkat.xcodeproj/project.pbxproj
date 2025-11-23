@@ -33,9 +33,22 @@
 		604FB2152EC8E6AF001D97AE /* iBirkatUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iBirkatUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		60E4DB6E2ED338D9004CED8B /* Exceptions for "iBirkat" folder in "iBirkat" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Untitled.swift,
+			);
+			target = 604FB1FD2EC8E6AD001D97AE /* iBirkat */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		604FB2002EC8E6AD001D97AE /* iBirkat */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				60E4DB6E2ED338D9004CED8B /* Exceptions for "iBirkat" folder in "iBirkat" target */,
+			);
 			path = iBirkat;
 			sourceTree = "<group>";
 		};
