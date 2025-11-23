@@ -7,7 +7,7 @@ import UIKit
 
 struct JewishDayInfo {
     let hebrewDate: String      // למשל: י״ד אדר
-    let special: String?        // למשל: "פורים"
+    let special: String?        // למשל: «פורים»
 }
 
 // ---------------------------------------------------------
@@ -52,6 +52,13 @@ final class ZmanimProvider {
         var cal = Calendar(identifier: .hebrew)
         cal.locale = Locale(identifier: "he_IL")
         return cal
+    }()
+
+    private let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm"
+        formatter.locale = Locale(identifier: "he_IL")
+        return formatter
     }()
 
     func zmanim(for date: Date) -> [ZmanItem] {
@@ -124,10 +131,9 @@ final class ZmanimProvider {
         let h = total / 60
         let m = total % 60
         let components = DateComponents(calendar: gregorianCalendar, hour: h, minute: m)
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
-        formatter.locale = Locale(identifier: "he_IL")
-        return formatter.string(from: components.date!)
+
+        guard let date = components.date else { return "--:--" }
+        return timeFormatter.string(from: date)
     }
 }
 
