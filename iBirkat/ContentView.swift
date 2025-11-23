@@ -1,4 +1,4 @@
-// Полная актуальная версия ContentView.swift для замены файла целиком
+// Полная актуальная версия ContentView.swift (готовый файл для замены целиком)
 import SwiftUI
 import UIKit
 
