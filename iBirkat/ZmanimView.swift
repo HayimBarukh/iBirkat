@@ -137,7 +137,8 @@ struct ZmanimView: View {
                         bottomNavigationRow
                             .padding(.horizontal, 16)
                             .padding(.top, 8)
-                            .padding(.bottom, bottomInset == 0 ? 12 : bottomInset)
+                            // Минимальный зазор без удвоения safe-area и без лишнего пустого места
+                            .padding(.bottom, bottomInset > 0 ? max(bottomInset - 6, 0) : 8)
                     }
                     .background(
                         Color(.systemBackground)
