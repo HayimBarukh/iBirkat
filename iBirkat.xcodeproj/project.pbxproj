@@ -7,7 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		60D32FCF2ED2561E00DEAB50 /* KosherSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 60D32FCE2ED2561E00DEAB50 /* KosherSwift */; };
+                60D32FCF2ED2561E00DEAB50 /* KosherSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 60D32FCE2ED2561E00DEAB50 /* KosherSwift */; };
+                62A9A3A62EEC79E800D8132B /* ZmanimView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62A9A3A52EEC79E800D8132B /* ZmanimView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -28,9 +29,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		604FB1FE2EC8E6AD001D97AE /* iBirkat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iBirkat.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		604FB20B2EC8E6AF001D97AE /* iBirkatTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iBirkatTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		604FB2152EC8E6AF001D97AE /* iBirkatUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iBirkatUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+                604FB1FE2EC8E6AD001D97AE /* iBirkat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iBirkat.app; sourceTree = BUILT_PRODUCTS_DIR; };
+                604FB20B2EC8E6AF001D97AE /* iBirkatTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iBirkatTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+                604FB2152EC8E6AF001D97AE /* iBirkatUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iBirkatUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+                62A9A3A52EEC79E800D8132B /* ZmanimView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ZmanimView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -44,14 +46,15 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		604FB2002EC8E6AD001D97AE /* iBirkat */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				60E4DB6E2ED338D9004CED8B /* Exceptions for "iBirkat" folder in "iBirkat" target */,
-			);
-			path = iBirkat;
-			sourceTree = "<group>";
-		};
+                604FB2002EC8E6AD001D97AE /* iBirkat */ = {
+                        isa = PBXFileSystemSynchronizedRootGroup;
+                        exceptions = (
+                                60E4DB6E2ED338D9004CED8B /* Exceptions for "iBirkat" folder in "iBirkat" target */,
+                        );
+                        fileEncoding = 4;
+                        path = iBirkat;
+                        sourceTree = "<group>";
+                };
 		604FB20E2EC8E6AF001D97AE /* iBirkatTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = iBirkatTests;
@@ -254,13 +257,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		604FB1FA2EC8E6AD001D97AE /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
+                604FB1FA2EC8E6AD001D97AE /* Sources */ = {
+                        isa = PBXSourcesBuildPhase;
+                        buildActionMask = 2147483647;
+                        files = (
+                                62A9A3A62EEC79E800D8132B /* ZmanimView.swift in Sources */,
+                        );
+                        runOnlyForDeploymentPostprocessing = 0;
+                };
 		604FB2072EC8E6AF001D97AE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
