@@ -93,9 +93,8 @@ struct ZmanimView: View {
 
                     zmanimList
                         .padding(.horizontal, 16)
-                        .padding(.bottom, bottomInset + 70)
+                        .padding(.bottom, 16)
                 }
-                .padding(.top, topInset)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .environment(\.layoutDirection, .rightToLeft)
                 .onAppear {
@@ -130,22 +129,21 @@ struct ZmanimView: View {
                         }
                     }
                 }
+                .safeAreaInset(edge: .bottom) {
+                    VStack(spacing: 0) {
+                        separator
+                            .padding(.horizontal, 16)
 
-                VStack(spacing: 0) {
-                    separator
-                        .padding(.horizontal, 16)
-
-                    bottomNavigationRow
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, bottomInset == 0 ? 10 : bottomInset)
+                        bottomNavigationRow
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
+                            .padding(.bottom, bottomInset == 0 ? 12 : bottomInset)
+                    }
+                    .background(
+                        Color(.systemBackground)
+                            .opacity(0.98)
+                    )
                 }
-                .padding(.top, 8)
-                .background(
-                    Color(.systemBackground)
-                        .opacity(0.98)
-                        .ignoresSafeArea(edges: .bottom)
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
 
                 backFloatingButton
                     .padding(.top, topInset + 8)
