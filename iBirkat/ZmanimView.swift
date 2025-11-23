@@ -77,71 +77,83 @@ struct ZmanimView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
-            headerArea
+        GeometryReader { proxy in
+            let topInset = proxy.safeAreaInsets.top
+            let bottomInset = proxy.safeAreaInsets.bottom
 
-            separator
-                .padding(.horizontal, 16)
+            ZStack(alignment: .topLeading) {
+                Color(.systemBackground)
+                    .ignoresSafeArea()
 
-            zmanimList
-                .padding(.horizontal, 16)
-        }
-        .navigationBarTitleDisplayMode(.inline)
-        .navigationBarBackButtonHidden(true)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
-                backFloatingButton
-            }
-        }
-        .environment(\.layoutDirection, .rightToLeft)
-        .onAppear {
-            syncSelectedOpinionsWithProfile()
-        }
-        .onChange(of: halachicProfileRaw) { _ in
-            syncSelectedOpinionsWithProfile()
-        }
-        .onChange(of: date) { _ in
-            if halachicProfile == .custom {
-                applyCustomMap()
-            } else {
-                selectedOpinions = [:]
-            }
-        }
-        .confirmationDialog(
-            "בחר דעה עבור הזמן",
-            isPresented: Binding(
-                get: { activeZmanItem != nil },
-                set: { newValue in if !newValue { activeZmanItem = nil } }
-            ),
-            titleVisibility: .visible
-        ) {
-            if let item = activeZmanItem {
-                ForEach(item.opinions) { opinion in
-                    Button(opinion.title) {
-                        pickOpinion(item, opinion)
+                VStack(spacing: 0) {
+                    headerArea
+
+                    separator
+                        .padding(.horizontal, 16)
+
+                    zmanimList
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, bottomInset + 70)
+                }
+                .padding(.top, topInset)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .environment(\.layoutDirection, .rightToLeft)
+                .onAppear {
+                    syncSelectedOpinionsWithProfile()
+                }
+                .onChange(of: halachicProfileRaw) { _ in
+                    syncSelectedOpinionsWithProfile()
+                }
+                .onChange(of: date) { _ in
+                    if halachicProfile == .custom {
+                        applyCustomMap()
+                    } else {
+                        selectedOpinions = [:]
                     }
                 }
-                Button("ביטול", role: .cancel) {
-                    activeZmanItem = nil
+                .confirmationDialog(
+                    "בחר דעה עבור הזמן",
+                    isPresented: Binding(
+                        get: { activeZmanItem != nil },
+                        set: { newValue in if !newValue { activeZmanItem = nil } }
+                    ),
+                    titleVisibility: .visible
+                ) {
+                    if let item = activeZmanItem {
+                        ForEach(item.opinions) { opinion in
+                            Button(opinion.title) {
+                                pickOpinion(item, opinion)
+                            }
+                        }
+                        Button("ביטול", role: .cancel) {
+                            activeZmanItem = nil
+                        }
+                    }
                 }
-            }
-        }
-        // Нижняя панель навигации по датам — прижата к самому низу
-        .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 4) {
-                separator
-                    .padding(.horizontal, 16)
 
-                bottomNavigationRow
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 4)
+                VStack(spacing: 0) {
+                    separator
+                        .padding(.horizontal, 16)
+
+                    bottomNavigationRow
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, bottomInset == 0 ? 10 : bottomInset)
+                }
+                .padding(.top, 8)
+                .background(
+                    Color(.systemBackground)
+                        .opacity(0.98)
+                        .ignoresSafeArea(edges: .bottom)
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+
+                backFloatingButton
+                    .padding(.top, topInset + 8)
+                    .padding(.leading, 12)
             }
-            .background(
-                Color(.systemBackground)
-                    .opacity(0.98)
-                    .ignoresSafeArea(edges: .bottom)
-            )
         }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     // MARK: - Floating back button
@@ -168,7 +180,6 @@ struct ZmanimView: View {
         VStack(spacing: 4) {
             Text("זמני היום · \(cityName)")
                 .font(.headline)
-                .padding(.top, 8)
 
             Text(hebrewInfo.hebrewDate)
                 .font(.subheadline)
@@ -276,7 +287,6 @@ struct ZmanimView: View {
                     }
                 }
             }
-            .padding(.vertical, 6)
         }
     }
 
@@ -375,7 +385,6 @@ struct ZmanimView: View {
             }
         }
         .buttonStyle(.plain)
-        .padding(.vertical, 2)
     }
 
     private func shiftDate(by days: Int) {
