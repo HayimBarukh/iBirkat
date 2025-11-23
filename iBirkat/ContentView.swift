@@ -230,6 +230,10 @@ final class ZmanimProvider {
             sunsetMinutes = 18 * 60
         }
 
+        let shaahZmanitGra = Double(sunsetMinutes - sunriseMinutes) / 12
+        let alos72 = sunriseMinutes - 72
+        let tzeit72 = sunsetMinutes + 72
+        let shaahZmanitMA = Double(tzeit72 - alos72) / 12
         let chatzot = (sunriseMinutes + sunsetMinutes) / 2
 
         var list: [ZmanItem] = []
@@ -280,9 +284,21 @@ final class ZmanimProvider {
                 title: "סוף זמן ק״ש",
                 subtitle: "בהתאם לאורך היום",
                 opinions: [
-                    ("מגן אברהם", "3 שעות זמניות מתחילת היום", sunriseMinutes + 180),
-                    ("הגר״א", "עד 3 שעות זמניות", sunriseMinutes + 198),
-                    ("חזון איש", "3 שעות זמניות + נטייה", sunriseMinutes + 204)
+                    (
+                        "מגן אברהם",
+                        "3 שעות זמניות מעלות החמה עד צאת (72)",
+                        Int(round(Double(alos72) + 3 * shaahZmanitMA))
+                    ),
+                    (
+                        "הגר״א",
+                        "3 שעות זמניות מנץ לשקיעה",
+                        Int(round(Double(sunriseMinutes) + 3 * shaahZmanitGra))
+                    ),
+                    (
+                        "חזון איש",
+                        "3 שעות זמניות (יום גר״א)",
+                        Int(round(Double(sunriseMinutes) + 3 * shaahZmanitGra))
+                    )
                 ],
                 calendar: gregorianCalendar
             )
@@ -293,9 +309,21 @@ final class ZmanimProvider {
             buildItem(
                 title: "סוף זמן תפילה",
                 opinions: [
-                    ("מגן אברהם", "4 שעות זמניות מתחילת היום", sunriseMinutes + 264),
-                    ("הגר״א", "עד 4 שעות זמניות", sunriseMinutes + 264),
-                    ("חזון איש", "4 שעות זמניות + נטייה", sunriseMinutes + 276)
+                    (
+                        "מגן אברהם",
+                        "4 שעות זמניות מעלות החמה עד צאת (72)",
+                        Int(round(Double(alos72) + 4 * shaahZmanitMA))
+                    ),
+                    (
+                        "הגר״א",
+                        "4 שעות זמניות מנץ לשקיעה",
+                        Int(round(Double(sunriseMinutes) + 4 * shaahZmanitGra))
+                    ),
+                    (
+                        "חזון איש",
+                        "4 שעות זמניות (יום גר״א)",
+                        Int(round(Double(sunriseMinutes) + 4 * shaahZmanitGra))
+                    )
                 ],
                 calendar: gregorianCalendar
             )
@@ -324,8 +352,16 @@ final class ZmanimProvider {
             buildItem(
                 title: "מנחה קטנה",
                 opinions: [
-                    ("שעה ורבע לפני שקיעה", "75 דקות לפני שקיעה", sunsetMinutes - 75),
-                    ("גר״א", "9.5 שעות זמניות מהזריחה", sunsetMinutes - 150)
+                    (
+                        "9.5 שעות זמניות מהזריחה",
+                        "9.5 שעות זמניות מנץ לשקיעה",
+                        Int(round(Double(sunriseMinutes) + 9.5 * shaahZmanitGra))
+                    ),
+                    (
+                        "מנהג 75 דק׳",
+                        "75 דקות לפני שקיעה",
+                        sunsetMinutes - 75
+                    )
                 ],
                 calendar: gregorianCalendar
             )
@@ -335,8 +371,16 @@ final class ZmanimProvider {
             buildItem(
                 title: "פלג המנחה",
                 opinions: [
-                    ("1.25 שעות זמניות לפני לילה", "75 דקות לפני לילה", sunsetMinutes - 75),
-                    ("18 דקות לפני שקיעה", "מינימום לחומרה", sunsetMinutes - 18)
+                    (
+                        "1.25 שעות זמניות לפני לילה",
+                        "פלג גר״א (1.25 שעות זמניות לפני שקיעה)",
+                        Int(round(Double(sunriseMinutes) + 10.75 * shaahZmanitGra))
+                    ),
+                    (
+                        "מנהג 18 דק׳",
+                        "18 דקות לפני שקיעה",
+                        sunsetMinutes - 18
+                    )
                 ],
                 calendar: gregorianCalendar
             )
