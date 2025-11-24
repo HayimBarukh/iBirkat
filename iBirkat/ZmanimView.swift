@@ -135,9 +135,9 @@ struct ZmanimView: View {
 
                         bottomNavigationRow
                             .padding(.horizontal, 16)
-                            .padding(.top, 8)
+                            .padding(.top, 4)
                             // Минимальный зазор без удвоения safe-area и без лишнего пустого места
-                            .padding(.bottom, bottomInset > 0 ? bottomInset : 8)
+                            .padding(.bottom, bottomInset > 0 ? max(bottomInset - 10, 8) : 6)
                     }
                     .background(
                         Color(.systemBackground)
@@ -148,13 +148,10 @@ struct ZmanimView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
-        .safeAreaInset(edge: .top) {
-            HStack {
-                backFloatingButton
-                Spacer()
-            }
-            .padding(.horizontal, 12)
-            .padding(.top, 4)
+        .overlay(alignment: .topLeading) {
+            backFloatingButton
+                .padding(.horizontal, 12)
+                .padding(.top, 4)
         }
     }
 
