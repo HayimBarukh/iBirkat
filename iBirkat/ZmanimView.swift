@@ -5,7 +5,6 @@ import KosherSwift
 struct ZmanimView: View {
 
     @EnvironmentObject var locationManager: LocationManager
-    @Environment(\.dismiss) private var dismiss
 
     // Дата, для которой считаем зманим
     @State private var date: Date = Date()
@@ -93,8 +92,6 @@ struct ZmanimView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let bottomInset = proxy.safeAreaInsets.bottom
-
             ZStack(alignment: .topLeading) {
                 Color(.systemBackground)
                     .ignoresSafeArea()
@@ -126,38 +123,6 @@ struct ZmanimView: View {
                 .onChange(of: date) { _ in
                     syncSelectedOpinionsWithProfile()
                 }
-            }
-            .overlay(alignment: .bottomTrailing) {
-                VStack(spacing: 8) {
-                    Button {
-                        dismiss()
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "xmark.circle.fill")
-                            Text("סגור")
-                        }
-                        .font(.headline)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 10)
-                        .background(.ultraThinMaterial, in: Capsule())
-                    }
-                    .buttonStyle(.plain)
-
-                    ScrollViewReader { scrollProxy in
-                        Button {
-                            withAnimation(.spring(response: 0.35, dampingFraction: 0.9)) {
-                                scrollProxy.scrollTo("top", anchor: .top)
-                            }
-                        } label: {
-                            Image(systemName: "arrow.up.circle.fill")
-                                .font(.system(size: 30))
-                                .foregroundColor(.accentColor)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.trailing, 20)
-                .padding(.bottom, max(bottomInset, 20))
             }
         }
     }
@@ -204,44 +169,33 @@ struct ZmanimView: View {
     // MARK: - Profile picker
 
     private var profilePicker: some View {
-        Menu {
-            Section {
+        VStack(alignment: .trailing, spacing: 8) {
+            Picker("", selection: $halachicProfileRaw) {
                 ForEach(HalachicProfile.basicCases, id: \.rawValue) { profile in
-                    Button {
-                        halachicProfileRaw = profile.rawValue
-                        lightHaptic()
-                    } label: {
-                        Label(profile.title, systemImage: profile.iconName)
-                    }
+                    Text(profile.shortSymbol)
+                        .tag(profile.rawValue)
+                        .accessibilityLabel(Text(profile.title))
                 }
+
+                Text(HalachicProfile.custom.shortSymbol)
+                    .tag(HalachicProfile.custom.rawValue)
+                    .accessibilityLabel(Text(HalachicProfile.custom.title))
             }
+            .pickerStyle(.segmented)
 
-            Section("אחר") {
-                Button {
-                    halachicProfileRaw = HalachicProfile.custom.rawValue
-                    lightHaptic()
-                } label: {
-                    Label("מותאם אישית", systemImage: HalachicProfile.custom.iconName)
-                }
-
-                if halachicProfile == .custom {
+            if halachicProfile == .custom {
+                HStack(spacing: 12) {
+                    Spacer()
                     Button(role: .destructive) {
                         resetCustomProfileToSephardiDefaults()
                     } label: {
                         Label("איפוס דעות מותאמות", systemImage: "arrow.counterclockwise")
+                            .labelStyle(.titleAndIcon)
                     }
+                    .buttonStyle(.bordered)
                 }
             }
-        } label: {
-            HStack(spacing: 8) {
-                Image(systemName: halachicProfile.iconName)
-                Text(halachicProfile.title)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Capsule().stroke(Color.accentColor, lineWidth: 1))
         }
-        .contentTransition(.opacity)
     }
 
     // MARK: - Date selector
@@ -262,6 +216,16 @@ struct ZmanimView: View {
                     .font(.subheadline)
             }
             .frame(width: 160)
+
+            Button {
+                date = Date()
+                lightHaptic()
+            } label: {
+                Text("היום")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .buttonStyle(.bordered)
+            .tint(.accentColor)
 
             Button {
                 shiftDate(by: 1)
@@ -564,20 +528,7 @@ struct ZmanimView: View {
     private func interactiveCard(for item: ZmanItem) -> some View {
         let selected = selectedOpinions[item.id] ?? item.defaultOpinion
 
-        return HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(selected.time)
-                    .font(.title2.weight(.semibold))
-                    .monospacedDigit()
-
-                Text(selected.title)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.8)
-            }
-            .frame(width: 140, alignment: .leading)
-
+        return HStack(alignment: .center, spacing: 16) {
             VStack(alignment: .trailing, spacing: 6) {
                Text(item.title)
                     .font(.headline)
@@ -592,8 +543,22 @@ struct ZmanimView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .trailing)
 
             Spacer(minLength: 12)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(selected.time)
+                    .font(.title2.weight(.semibold))
+                    .monospacedDigit()
+
+                Text(selected.title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(width: 150, alignment: .leading)
 
             Image(systemName: "chevron.down")
                 .foregroundColor(.secondary)
@@ -610,7 +575,25 @@ struct ZmanimView: View {
     private func nonInteractiveCard(for item: ZmanItem) -> some View {
         let opinion = item.opinions.first ?? item.defaultOpinion
 
-        return HStack(alignment: .center, spacing: 12) {
+        return HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .trailing, spacing: 6) {
+                Text(item.title)
+                    .font(.headline)
+                    .multilineTextAlignment(.trailing)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let subtitle = item.subtitle {
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.trailing)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+
+            Spacer(minLength: 12)
+
             VStack(alignment: .leading, spacing: 4) {
                 Text(opinion.time)
                     .font(.title2.weight(.semibold))
@@ -622,24 +605,7 @@ struct ZmanimView: View {
                     .lineLimit(2)
                     .minimumScaleFactor(0.8)
             }
-            .frame(width: 140, alignment: .leading)
-
-                VStack(alignment: .trailing, spacing: 6) {
-                    Text(item.title)
-                        .font(.headline)
-                        .multilineTextAlignment(.trailing)
-                        .fixedSize(horizontal: false, vertical: true)
-
-                if let subtitle = item.subtitle {
-                    Text(subtitle)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.trailing)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                }
-
-            Spacer(minLength: 12)
+            .frame(width: 150, alignment: .leading)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
@@ -759,29 +725,19 @@ struct ZmanimView: View {
 }
 
 private struct ZmanPopoverModifier<PopoverContent: View>: ViewModifier {
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-
     let isPresented: Binding<Bool>
     let arrowEdge: Edge
     let popoverContent: () -> PopoverContent
 
     @ViewBuilder
     func body(content trigger: Content) -> some View {
-        if horizontalSizeClass == .compact {
-            trigger.sheet(isPresented: isPresented) {
-                popoverContent()
-                    .presentationDetents([.fraction(0.45), .medium, .large])
-                    .presentationDragIndicator(.visible)
-            }
-        } else {
-            trigger.popover(
-                isPresented: isPresented,
-                attachmentAnchor: .rect(.bounds),
-                arrowEdge: arrowEdge,
-                content: popoverContent
-            )
-            .modifier(PresentationPopoverFallback())
-        }
+        trigger.popover(
+            isPresented: isPresented,
+            attachmentAnchor: .rect(.bounds),
+            arrowEdge: arrowEdge,
+            content: popoverContent
+        )
+        .modifier(PresentationPopoverFallback())
     }
 }
 
