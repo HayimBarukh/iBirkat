@@ -17,7 +17,9 @@ struct iBirkatTests {
         return calendar
     }()
 
-    private let zmanimProvider = ZmanimProvider()
+    private let testDefaults = UserDefaults(suiteName: "iBirkatTests-\(UUID().uuidString)")!
+
+    private lazy var zmanimProvider = ZmanimProvider(userDefaults: testDefaults)
 
     @Test("Особые дни по еврейскому календарю", arguments: [
         (year: 5784, month: 1, day: 1, expected: "ראש חודש"),

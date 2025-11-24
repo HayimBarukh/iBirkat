@@ -98,6 +98,7 @@ final class ZmanimProvider {
 
     private let geoLocation: GeoLocation
     private let cal: ComplexZmanimCalendar
+    private let defaults: UserDefaults
 
     private lazy var timeFormatter: DateFormatter = {
         let df = DateFormatter()
@@ -107,9 +108,30 @@ final class ZmanimProvider {
         return df
     }()
 
-    init(geoLocation: GeoLocation) {
+    init(geoLocation: GeoLocation, userDefaults: UserDefaults = .standard) {
         self.geoLocation = geoLocation
+        self.defaults = userDefaults
         self.cal = ComplexZmanimCalendar(location: geoLocation)
+    }
+
+    /// Удобный инициализатор с запасным местоположением — Иерусалим.
+    /// Используется там, где нет актуальных координат (например, в тестах).
+    convenience init() {
+        self.init(userDefaults: .standard)
+    }
+
+    /// Удобный инициализатор с запасным местоположением и кастомными UserDefaults.
+    convenience init(userDefaults: UserDefaults) {
+        let tz = TimeZone(identifier: "Asia/Jerusalem") ?? .current
+
+        let geo = GeoLocation(
+            locationName: "ירושלים",
+            latitude: 31.778,
+            longitude: 35.235,
+            timeZone: tz
+        )
+
+        self.init(geoLocation: geo, userDefaults: userDefaults)
     }
 
     /// Вспомогательный метод: выставляем дату и возвращаем закат
@@ -124,11 +146,20 @@ final class ZmanimProvider {
         return Calendar.current.date(byAdding: .minute, value: -minutesBeforeSunset, to: sunset)
     }
 
+    /// Все зманим для указанной даты. Профиль берётся из UserDefaults или .sephardi.
+    func zmanim(for date: Date) -> [ZmanItem] {
+        let storedProfile = defaults.string(forKey: "halachicProfile")
+        let profile = HalachicProfile(rawValue: storedProfile ?? "") ?? .sephardi
+
+        return zmanim(for: date, profile: profile)
+    }
+
     /// Все зманим для указанной даты и профиля
     func zmanim(for date: Date, profile: HalachicProfile) -> [ZmanItem] {
         cal.workingDate = date
 
-        let candleOffsetMinutes = UserDefaults.standard.integer(forKey: "candleLightingOffset")
+        let storedOffset = defaults.object(forKey: "candleLightingOffset") as? Int
+        let candleOffsetMinutes = storedOffset ?? 18
         let candleLighting = candleLighting(for: date, minutesBeforeSunset: candleOffsetMinutes)
 
         let dawn90    = cal.getAlosHashachar(90.0)
