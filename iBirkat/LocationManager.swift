@@ -19,6 +19,11 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         manager.requestWhenInUseAuthorization()
     }
 
+    /// Запросить одно обновление локации (используется в ZmanimView)
+    func requestLocation() {
+        manager.requestLocation()
+    }
+
     // GeoLocation для KosherSwift
     var geoLocation: GeoLocation? {
         guard let loc = currentLocation else { return nil }
