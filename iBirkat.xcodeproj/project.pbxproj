@@ -7,8 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-                60D32FCF2ED2561E00DEAB50 /* KosherSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 60D32FCE2ED2561E00DEAB50 /* KosherSwift */; };
-                62A9A3A62EEC79E800D8132B /* ZmanimView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62A9A3A52EEC79E800D8132B /* ZmanimView.swift */; };
+		60D32FCF2ED2561E00DEAB50 /* KosherSwift in Frameworks */ = {isa = PBXBuildFile; productRef = 60D32FCE2ED2561E00DEAB50 /* KosherSwift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -29,10 +28,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-                604FB1FE2EC8E6AD001D97AE /* iBirkat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iBirkat.app; sourceTree = BUILT_PRODUCTS_DIR; };
-                604FB20B2EC8E6AF001D97AE /* iBirkatTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iBirkatTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-                604FB2152EC8E6AF001D97AE /* iBirkatUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iBirkatUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-                62A9A3A52EEC79E800D8132B /* ZmanimView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ZmanimView.swift; sourceTree = "<group>"; };
+		604FB1FE2EC8E6AD001D97AE /* iBirkat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = iBirkat.app; path = "/Users/hayimbarukh/Documents/Мои программы/iBirkat/build/Debug-iphoneos/iBirkat.app"; sourceTree = "<absolute>"; };
+		604FB20B2EC8E6AF001D97AE /* iBirkatTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = iBirkatTests.xctest; path = "/Users/hayimbarukh/Documents/Мои программы/iBirkat/build/Debug-iphoneos/iBirkat.app/PlugIns/iBirkatTests.xctest"; sourceTree = "<absolute>"; };
+		604FB2152EC8E6AF001D97AE /* iBirkatUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = iBirkatUITests.xctest; path = "/Users/hayimbarukh/Documents/Мои программы/iBirkat/build/Debug-iphoneos/iBirkatUITests-Runner.app/PlugIns/iBirkatUITests.xctest"; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -46,15 +44,15 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-                604FB2002EC8E6AD001D97AE /* iBirkat */ = {
-                        isa = PBXFileSystemSynchronizedRootGroup;
-                        exceptions = (
-                                60E4DB6E2ED338D9004CED8B /* Exceptions for "iBirkat" folder in "iBirkat" target */,
-                        );
-                        fileEncoding = 4;
-                        path = iBirkat;
-                        sourceTree = "<group>";
-                };
+		604FB2002EC8E6AD001D97AE /* iBirkat */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				60E4DB6E2ED338D9004CED8B /* Exceptions for "iBirkat" folder in "iBirkat" target */,
+			);
+			fileEncoding = 4;
+			path = iBirkat;
+			sourceTree = "<group>";
+		};
 		604FB20E2EC8E6AF001D97AE /* iBirkatTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = iBirkatTests;
@@ -99,18 +97,7 @@
 				604FB2002EC8E6AD001D97AE /* iBirkat */,
 				604FB20E2EC8E6AF001D97AE /* iBirkatTests */,
 				604FB2182EC8E6AF001D97AE /* iBirkatUITests */,
-				604FB1FF2EC8E6AD001D97AE /* Products */,
 			);
-			sourceTree = "<group>";
-		};
-		604FB1FF2EC8E6AD001D97AE /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				604FB1FE2EC8E6AD001D97AE /* iBirkat.app */,
-				604FB20B2EC8E6AF001D97AE /* iBirkatTests.xctest */,
-				604FB2152EC8E6AF001D97AE /* iBirkatUITests.xctest */,
-			);
-			name = Products;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -221,7 +208,7 @@
 				60D32FCD2ED2561E00DEAB50 /* XCRemoteSwiftPackageReference "KosherSwift" */,
 			);
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 604FB1FF2EC8E6AD001D97AE /* Products */;
+			productRefGroup = 604FB1F52EC8E6AD001D97AE;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -257,14 +244,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-                604FB1FA2EC8E6AD001D97AE /* Sources */ = {
-                        isa = PBXSourcesBuildPhase;
-                        buildActionMask = 2147483647;
-                        files = (
-                                62A9A3A62EEC79E800D8132B /* ZmanimView.swift in Sources */,
-                        );
-                        runOnlyForDeploymentPostprocessing = 0;
-                };
+		604FB1FA2EC8E6AD001D97AE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		604FB2072EC8E6AF001D97AE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
