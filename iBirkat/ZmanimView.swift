@@ -13,6 +13,7 @@ struct ZmanimView: View {
     // Выбор мнений для конкретных зманим (в памяти экрана)
     @State private var selectedOpinions: [String: ZmanOpinion] = [:]
     @State private var activeZmanItem: ZmanItem?
+    @State private var popoverArrowEdge: Edge = .top
     @State private var showingCandleOffsetDialog = false
 
     // Профиль по общине
@@ -463,36 +464,95 @@ struct ZmanimView: View {
             interactiveCard(for: item)
         }
         .buttonStyle(.plain)
-        .zmanPopover(isPresented: isPopoverShown) {
+        .zmanPopover(isPresented: isPopoverShown, arrowEdge: popoverArrowEdge) {
             opinionPicker(for: item)
         }
+        .background(
+            GeometryReader { geo in
+                Color.clear
+                    .onChange(of: activeZmanItem?.id == item.id) { isActive in
+                        guard isActive else { return }
+
+                        let frame = geo.frame(in: .global)
+                        let screenHeight = UIScreen.main.bounds.height
+                        let spaceAbove = frame.minY
+                        let spaceBelow = screenHeight - frame.maxY
+
+                        popoverArrowEdge = spaceBelow < spaceAbove ? .bottom : .top
+                    }
+            }
+        )
     }
 
     private func opinionPicker(for item: ZmanItem) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("בחר דעה עבור הזמן")
-                .font(.headline)
-                .padding(.bottom, 2)
+        let selectedOpinion = selectedOpinions[item.id] ?? item.defaultOpinion
+        let maxHeight = UIScreen.main.bounds.height * 0.55
 
-            ForEach(item.opinions) { opinion in
-                Button(opinion.title) {
-                    pickOpinion(item, opinion)
+        return ScrollView {
+            VStack(alignment: .trailing, spacing: 12) {
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("בחר דעה עבור הזמן")
+                        .font(.headline)
+                    Text(item.title)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.trailing)
                 }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+
+                ForEach(item.opinions) { opinion in
+                    Button {
+                        pickOpinion(item, opinion)
+                    } label: {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text(opinion.title)
+                                    .font(.body.weight(.semibold))
+                                    .multilineTextAlignment(.trailing)
+                                    .fixedSize(horizontal: false, vertical: true)
+
+                                Text(opinion.time)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+
+                            Image(systemName: selectedOpinion.id == opinion.id ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(selectedOpinion.id == opinion.id ? Color.accentColor : Color.secondary)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(selectedOpinion.id == opinion.id ? Color.accentColor.opacity(0.12) : Color.gray.opacity(0.08))
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                Button {
+                    activeZmanItem = nil
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "xmark")
+                        Text("ביטול")
+                            .font(.body.weight(.semibold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 10)
+                }
+                .foregroundColor(.secondary)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.gray.opacity(0.08))
+                )
                 .buttonStyle(.plain)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 4)
             }
-
-            Divider()
-
-            Button("ביטול") {
-                activeZmanItem = nil
-            }
-            .buttonStyle(.plain)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 2)
+            .frame(maxWidth: 440, alignment: .trailing)
+            .padding(16)
         }
-        .padding(14)
+        .frame(maxHeight: maxHeight, alignment: .top)
+        .scrollIndicators(.hidden)
     }
 
     private func nonInteractiveCard(for item: ZmanItem) -> some View {
@@ -668,27 +728,50 @@ struct ZmanimView: View {
     }
 }
 
+private struct ZmanPopoverModifier<PopoverContent: View>: ViewModifier {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
+    let isPresented: Binding<Bool>
+    let arrowEdge: Edge
+    let popoverContent: () -> PopoverContent
+
+    @ViewBuilder
+    func body(content trigger: Content) -> some View {
+        if horizontalSizeClass == .compact {
+            trigger.sheet(isPresented: isPresented) {
+                popoverContent()
+                    .presentationDetents([.fraction(0.45), .medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
+        } else {
+            trigger.popover(
+                isPresented: isPresented,
+                attachmentAnchor: .rect(.bounds),
+                arrowEdge: arrowEdge,
+                content: popoverContent
+            )
+            .modifier(PresentationPopoverFallback())
+        }
+    }
+}
+
+private struct PresentationPopoverFallback: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 17.0, *) {
+            content.presentationCompactAdaptation(.popover)
+        } else {
+            content
+        }
+    }
+}
+
 private extension View {
     @ViewBuilder
     func zmanPopover<Content: View>(
         isPresented: Binding<Bool>,
+        arrowEdge: Edge = .top,
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
-        if #available(iOS 17.0, *) {
-            popover(
-                isPresented: isPresented,
-                attachmentAnchor: .rect(.bounds),
-                arrowEdge: .top,
-                content: content
-            )
-            .presentationCompactAdaptation(.popover)
-        } else {
-            popover(
-                isPresented: isPresented,
-                attachmentAnchor: .rect(.bounds),
-                arrowEdge: .top,
-                content: content
-            )
-        }
+        modifier(ZmanPopoverModifier(isPresented: isPresented, arrowEdge: arrowEdge, popoverContent: content))
     }
 }
