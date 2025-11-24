@@ -469,30 +469,66 @@ struct ZmanimView: View {
     }
 
     private func opinionPicker(for item: ZmanItem) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("בחר דעה עבור הזמן")
-                .font(.headline)
-                .padding(.bottom, 2)
+        let selectedOpinion = selectedOpinions[item.id] ?? item.defaultOpinion
+
+        return VStack(alignment: .trailing, spacing: 12) {
+            VStack(alignment: .trailing, spacing: 4) {
+                Text("בחר דעה עבור הזמן")
+                    .font(.headline)
+                Text(item.title)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
 
             ForEach(item.opinions) { opinion in
-                Button(opinion.title) {
+                Button {
                     pickOpinion(item, opinion)
+                } label: {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .trailing, spacing: 4) {
+                            Text(opinion.title)
+                                .font(.body.weight(.semibold))
+                                .multilineTextAlignment(.trailing)
+
+                            Text(opinion.time)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+
+                        Image(systemName: selectedOpinion.id == opinion.id ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(selectedOpinion.id == opinion.id ? Color.accentColor : Color.secondary)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(selectedOpinion.id == opinion.id ? Color.accentColor.opacity(0.12) : Color.gray.opacity(0.08))
+                    )
                 }
                 .buttonStyle(.plain)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, 4)
             }
 
-            Divider()
-
-            Button("ביטול") {
+            Button {
                 activeZmanItem = nil
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "xmark")
+                    Text("ביטול")
+                        .font(.body.weight(.semibold))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
             }
+            .foregroundColor(.secondary)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.gray.opacity(0.08))
+            )
             .buttonStyle(.plain)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.top, 2)
         }
-        .padding(14)
+        .padding(16)
     }
 
     private func nonInteractiveCard(for item: ZmanItem) -> some View {
