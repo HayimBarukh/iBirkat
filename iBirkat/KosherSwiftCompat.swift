@@ -153,7 +153,8 @@ extension ComplexZmanimCalendar {
 
     func getChatzosLayla() -> Date? {
         guard let sunset = getSunset() else { return nil }
-        let nextDate = Calendar.current.date(byAdding: .day, value: 1, to: workingDate) ?? workingDate.addingTimeInterval(86_400)
+        let nextDate = Calendar.current.date(byAdding: .day, value: 1, to: workingDate)
+            ?? workingDate.addingTimeInterval(86_400)
         let nextCal = ComplexZmanimCalendar(location: geoLocation)
         nextCal.workingDate = nextDate
         guard let nextSunrise = nextCal.getSunrise() else { return nil }
