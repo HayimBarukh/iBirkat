@@ -84,6 +84,24 @@ final class ZmanimProvider {
         self.cal = ComplexZmanimCalendar(location: geoLocation)
     }
 
+    /// Вспомогательный метод: выставляем дату и возвращаем закат
+    private func sunset(for date: Date) -> Date? {
+        cal.workingDate = date
+        return cal.getSunset()
+    }
+
+    /// Время зажигания свечей (минут до заката)
+    func candleLighting(for date: Date, minutesBeforeSunset: Int) -> Date? {
+        guard let sunset = sunset(for: date) else { return nil }
+        return sunset.addingTimeInterval(-Double(minutesBeforeSunset) * 60)
+    }
+
+    /// Время выхода субботы/праздника (смещение в минутах после заката)
+    func motzaeiShabbatOrYomTov(for date: Date, offsetMinutes: Int = 40) -> Date? {
+        guard let sunset = sunset(for: date) else { return nil }
+        return sunset.addingTimeInterval(Double(offsetMinutes) * 60)
+    }
+
     /// Главный метод: список зманим на день
     func zmanim(
         for date: Date,

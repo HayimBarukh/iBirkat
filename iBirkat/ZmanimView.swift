@@ -13,10 +13,15 @@ struct ZmanimView: View {
     // Выбор мнений для конкретных зманим (в памяти экрана)
     @State private var selectedOpinions: [String: ZmanOpinion] = [:]
     @State private var activeZmanItem: ZmanItem?
+    @State private var showingCandleOffsetDialog = false
 
     // Профиль по общине
     @AppStorage("halachicProfile")
     private var halachicProfileRaw: String = HalachicProfile.sephardi.rawValue
+
+    // Смещение зажигания свечей до заката (в минутах)
+    @AppStorage("candleLightingOffset")
+    private var candleLightingOffset: Int = 18
 
     // Карта кастомных мнений: itemID -> opinionID (в JSON)
     @AppStorage("customOpinionMap")
@@ -56,6 +61,15 @@ struct ZmanimView: View {
         HebrewDateHelper.shared.info(for: date)
     }
 
+    // Форматтер времени
+    private var timeFormatter: DateFormatter {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "he_IL")
+        df.timeZone = geoLocation.timeZone
+        df.dateFormat = "HH:mm"
+        return df
+    }
+
     // Форматтер григорианской даты (на иврите)
     private var gregorianFormatter: DateFormatter {
         let df = DateFormatter()
@@ -87,12 +101,18 @@ struct ZmanimView: View {
                 VStack(spacing: 0) {
                     headerArea
 
+                    if let special = specialTimesInfo {
+                        specialTimesArea(special)
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 10)
+                    }
+
                     separator
                         .padding(.horizontal, 16)
 
                     zmanimList
                         .padding(.horizontal, 16)
-                        .padding(.bottom, 16)
+                        .padding(.bottom, 8)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .environment(\.layoutDirection, .rightToLeft)
@@ -263,6 +283,168 @@ struct ZmanimView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Special times (candle lighting / motzaei)
+
+    private struct SpecialTimesInfo {
+        enum Kind {
+            case shabbat
+            case yomTov
+
+            var title: String {
+                switch self {
+                case .shabbat: return "ערב שבת"
+                case .yomTov:  return "ערב חג"
+                }
+            }
+        }
+
+        let kind: Kind
+        let candleLighting: String
+        let endTime: String
+    }
+
+    private var specialTimesInfo: SpecialTimesInfo? {
+        guard let kind = specialDayKind else { return nil }
+
+        let lighting = provider.candleLighting(
+            for: date,
+            minutesBeforeSunset: candleLightingOffset
+        )
+
+        // Выход праздника/Шаббата считаем по следующему календарному дню
+        var motzaeiCalendar = Calendar.current
+        motzaeiCalendar.timeZone = geoLocation.timeZone
+        let motzaeiDate = motzaeiCalendar.date(byAdding: .day, value: 1, to: date)
+        let motzaei = provider.motzaeiShabbatOrYomTov(
+            for: motzaeiDate ?? date,
+            offsetMinutes: 40
+        )
+
+        return SpecialTimesInfo(
+            kind: kind,
+            candleLighting: timeString(lighting),
+            endTime: timeString(motzaei)
+        )
+    }
+
+    /// Определение, является ли дата вечером Шаббата или праздника (Э״י)
+    private var specialDayKind: SpecialTimesInfo.Kind? {
+        // Пятница — всегда ערב שבת
+        var gregorian = Calendar.current
+        gregorian.timeZone = geoLocation.timeZone
+        let weekday = gregorian.component(.weekday, from: date)
+        if weekday == 6 { return .shabbat }
+
+        // Проверяем, не вечер ли Йом Тов
+        var hebCal = Calendar(identifier: .hebrew)
+        hebCal.timeZone = geoLocation.timeZone
+
+        guard
+            let tomorrow = hebCal.date(byAdding: .day, value: 1, to: date)
+        else { return nil }
+
+        let comps = hebCal.dateComponents([.month, .day], from: tomorrow)
+        guard let month = comps.month, let day = comps.day else {
+            return nil
+        }
+
+        let leap = (hebCal.range(of: .month, in: .year, for: tomorrow)?.count ?? 12) == 13
+        if isYomTov(month: month, day: day, isLeapYear: leap) {
+            return .yomTov
+        }
+
+        return nil
+    }
+
+    /// Список праздничных дней в Э״י (для определения «эрев חג»)
+    private func isYomTov(month: Int, day: Int, isLeapYear: Bool) -> Bool {
+        _ = isLeapYear // параметр оставлен для будущего учёта диаспоры/לוח שנה
+
+        // Нумерация месяцев календаря .hebrew: תשרי=1 … אלול=13
+        switch (month, day) {
+        case (1, 1), (1, 2): // Рош ѓаШана
+            return true
+        case (1, 10): // Йом Кипур
+            return true
+        case (1, 15), (1, 22): // Суккот, Шмини Ацерет/Симхат Тора
+            return true
+        case (8, 15), (8, 21): // 1-й и 7-й дни Песаха
+            return true
+        case (10, 6): // Шавуот
+            return true
+        default:
+            // Високосный Адар: порядок месяцев отличается, но на йом-товы не влияет
+            return false
+        }
+    }
+
+    private func specialTimesArea(_ info: SpecialTimesInfo) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(info.kind.title)
+                    .font(.subheadline.weight(.semibold))
+
+                Spacer()
+
+                Button {
+                    lightHaptic()
+                    activeZmanItem = nil
+                    showingCandleOffsetDialog = true
+                } label: {
+                    HStack(spacing: 4) {
+                        Text("\(candleLightingOffset) דק׳ לפני שקיעה")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .confirmationDialog("בחרי זמן הדלקה", isPresented: $showingCandleOffsetDialog, titleVisibility: .visible) {
+                    ForEach(candleLightingOffsets, id: \.self) { value in
+                        Button("\(value) דקות לפני שקיעה") {
+                            candleLightingOffset = value
+                            lightHaptic()
+                        }
+                    }
+                }
+            }
+
+            VStack(alignment: .leading, spacing: 6) {
+                specialRow(title: "הדלקת נרות", time: info.candleLighting)
+                specialRow(title: "צאת שבת / חג", time: info.endTime)
+            }
+        }
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.blue.opacity(0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(Color.blue.opacity(0.25), lineWidth: 1)
+        )
+    }
+
+    private var candleLightingOffsets: [Int] { [18, 24, 30, 40] }
+
+    private func specialRow(title: String, time: String) -> some View {
+        HStack {
+            Text(title)
+                .font(.subheadline)
+            Spacer()
+            Text(time)
+                .font(.title3.weight(.semibold))
+                .monospacedDigit()
+        }
+    }
+
+    private func timeString(_ date: Date?) -> String {
+        guard let d = date else { return "—" }
+        return timeFormatter.string(from: d)
     }
 
     private func interactiveZmanButton(for item: ZmanItem) -> some View {
