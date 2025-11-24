@@ -5,6 +5,7 @@ import KosherSwift
 struct ZmanimView: View {
 
     @EnvironmentObject var locationManager: LocationManager
+    @Environment(\.dismiss) private var dismiss
 
     // Дата, для которой считаем зманим
     @State private var date: Date = Date()
@@ -96,6 +97,10 @@ struct ZmanimView: View {
                 Color(.systemBackground)
                     .ignoresSafeArea()
 
+                backButton
+                    .padding(.top, 12)
+                    .padding(.leading, 12)
+
                 VStack(spacing: 0) {
                     headerArea
 
@@ -125,6 +130,26 @@ struct ZmanimView: View {
                 }
             }
         }
+    }
+
+    private var backButton: some View {
+        Button {
+            lightHaptic()
+            dismiss()
+        } label: {
+            Label("חזרה", systemImage: "chevron.backward")
+                .labelStyle(.titleAndIcon)
+                .font(.subheadline.weight(.semibold))
+        }
+        .buttonStyle(.bordered)
+        .tint(.accentColor)
+        .padding(8)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.systemBackground).opacity(0.9))
+        )
+        .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 2)
+        .accessibilityLabel(Text("חזרה למסך הראשי"))
     }
 
     // MARK: - Header
