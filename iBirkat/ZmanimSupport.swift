@@ -115,7 +115,6 @@ final class ZmanimProvider {
     }
 
     /// Удобный инициализатор с запасным местоположением — Иерусалим.
-    /// Используется там, где нет актуальных координат (например, в тестах).
     convenience init() {
         self.init(userDefaults: .standard)
     }
