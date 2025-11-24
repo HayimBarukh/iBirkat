@@ -28,9 +28,14 @@ struct ZmanItem: Identifiable, Hashable {
          opinions: [ZmanOpinion],
          subtitle: String? = nil)
     {
-        self.id = id ?? title
+        let resolvedID = id ?? title
+        let safeOpinions = opinions.isEmpty
+            ? [ZmanOpinion(id: "\(resolvedID)-placeholder", title: "—", time: "—")]
+            : opinions
+
+        self.id = resolvedID
         self.title = title
-        self.opinions = opinions
+        self.opinions = safeOpinions
         self.subtitle = subtitle
     }
 }
