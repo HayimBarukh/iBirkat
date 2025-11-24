@@ -55,6 +55,15 @@ enum HalachicProfile: String, CaseIterable, Identifiable {
         [.sephardi, .ashkenazi, .chabad]
     }
 
+    var tabletLabel: String {
+        switch self {
+        case .sephardi:  return "עדות המזרח"
+        case .ashkenazi: return "אשכנז"
+        case .chabad:    return "חב״ד"
+        case .custom:    return "מותאם"
+        }
+    }
+
     var shortSymbol: String {
         switch self {
         case .sephardi:  return "ע״מ"
