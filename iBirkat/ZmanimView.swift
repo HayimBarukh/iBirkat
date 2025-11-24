@@ -1,7 +1,7 @@
 import SwiftUI
 import KosherSwift
 
-/// Экран «Змани היום»
+/// Экран «זמני היום»
 struct ZmanimView: View {
 
     @EnvironmentObject var locationManager: LocationManager
@@ -85,7 +85,7 @@ struct ZmanimView: View {
     }
 
     private var cityName: String {
-        geoLocation.locationName ?? "מקום נוכחי"
+        geoLocation.locationName
     }
 
     private var isPhone: Bool {
@@ -512,7 +512,7 @@ struct ZmanimView: View {
             .frame(height: 1)
     }
 
-    // MARK: - Date controls
+    // MARK: - Date controls (пока не подключены в UI, можно будет добавить позже)
 
     private var dateControls: some View {
         HStack(spacing: 10) {
@@ -548,33 +548,6 @@ struct ZmanimView: View {
         .labelsHidden()
         .environment(\.layoutDirection, .rightToLeft)
         .scaleEffect(isPhone ? 0.9 : 1.0)
-    }
-
-    // MARK: - Special footer for phone
-
-    private var phoneFooter: some View {
-        VStack(spacing: 6) {
-            separator
-                .padding(.horizontal, 16)
-
-            dateControls
-                .padding(.horizontal, 16)
-                .padding(.bottom, 6)
-        }
-        .padding(.bottom, 6)
-        .background(Color(.systemBackground).ignoresSafeArea(edges: .bottom))
-    }
-
-    // MARK: - Helpers для выделения секций
-
-    private func sectionBackground(_ color: Color = Color(.secondarySystemBackground)) -> some View {
-        RoundedRectangle(cornerRadius: 12, style: .continuous)
-            .fill(color)
-    }
-
-    private func highlightBackground() -> some View {
-        RoundedRectangle(cornerRadius: 10, style: .continuous)
-            .fill(Color.yellow.opacity(0.15))
     }
 
     // MARK: - Date helpers
@@ -615,8 +588,6 @@ struct ZmanimView: View {
     }
 
     /// Сброс кастомного профиля к значениям по умолчанию (сефарадим)
-    /// — удаляем карту мнений и локальный выбор; при профиле `.custom`
-    /// это значит: брать `defaultOpinion`, который настроен как Сефарадим.
     private func resetCustomProfileToSephardiDefaults() {
         guard halachicProfile == .custom else { return }
         customOpinionMapRaw = ""      // стираем сохранённые выборы
@@ -659,6 +630,8 @@ struct ZmanimView: View {
         generator.impactOccurred()
     }
 }
+
+// MARK: - Поповер модификатор
 
 private struct ZmanPopoverModifier<PopoverContent: View>: ViewModifier {
     let isPresented: Binding<Bool>
