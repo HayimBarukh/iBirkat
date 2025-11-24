@@ -222,3 +222,22 @@ final class HebrewDateHelper {
         return joined + "״" + last
     }
 }
+
+// Дополнительные поля, которые использует ZmanimView
+extension JewishDayInfo {
+    /// Пока используем special как "событие / параша".
+    var parashaOrEvent: String {
+        special ?? ""
+    }
+
+    /// Временно возвращаем тот же текст, что и hebrewDateText.
+    /// При желании можно расширить до "תשרי תשפ״ו" и т.п.
+    var hebrewMonthAndYear: String {
+        hebrewDateText
+    }
+
+    /// Алиас для dayOfWeek, чтобы имя было более читаемым.
+    var weekdayName: String {
+        dayOfWeek
+    }
+}
