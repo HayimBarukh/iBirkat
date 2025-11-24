@@ -247,21 +247,21 @@ struct ZmanimView: View {
     }
 
     private var compactDateSelector: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             Button {
                 shiftDate(by: -1)
             } label: {
                 Image(systemName: "chevron.backward")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
             }
 
-            VStack(spacing: 2) {
+            VStack(spacing: 1) {
                 Text(hebrewInfo.dayOfWeek)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.footnote.weight(.semibold))
                 Text(hebrewInfo.hebrewDateText)
-                    .font(.caption)
+                    .font(.caption2)
             }
-            .frame(width: 150)
+            .frame(width: 140)
             .contentShape(Rectangle())
             .onTapGesture {
                 resetDateToToday()
@@ -271,7 +271,7 @@ struct ZmanimView: View {
                 shiftDate(by: 1)
             } label: {
                 Image(systemName: "chevron.forward")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.system(size: 15, weight: .semibold))
             }
         }
         .buttonStyle(.plain)
@@ -279,8 +279,8 @@ struct ZmanimView: View {
 
     private var bottomDateSelector: some View {
         compactDateSelector
-            .padding(.horizontal, 16)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 14)
+            .padding(.vertical, 4)
             .frame(maxWidth: .infinity)
             .background(.ultraThinMaterial)
             .ignoresSafeArea(edges: .bottom)
@@ -487,8 +487,8 @@ struct ZmanimView: View {
                     }
 
                 opinionPicker(for: item)
-                    .frame(maxWidth: 320)
-                    .padding(18)
+                    .frame(maxWidth: 280)
+                    .padding(14)
                     .background(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
                             .fill(Color(.systemBackground))
@@ -546,7 +546,7 @@ struct ZmanimView: View {
 
     private func opinionPicker(for item: ZmanItem) -> some View {
         let selectedOpinion = selectedOpinions[item.id] ?? item.defaultOpinion
-        let maxHeight = UIScreen.main.bounds.height * 0.45
+        let maxHeight = UIScreen.main.bounds.height * 0.38
 
         return ScrollView {
             VStack(alignment: .trailing, spacing: 12) {
