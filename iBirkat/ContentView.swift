@@ -111,6 +111,7 @@ struct ContentView: View {
             }
             .navigationBarHidden(true)
         }
+        .navigationViewStyle(.stack)
         .environment(\.layoutDirection, .rightToLeft)
     }
 
