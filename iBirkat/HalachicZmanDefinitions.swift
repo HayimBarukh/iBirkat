@@ -22,7 +22,7 @@ struct ZmanSection: Identifiable {
     let zmanim: [ZmanDefinition]
 }
 
-// ВСЕ ВРЕМЕНА И ШИТОТ — как ты дал
+// ВСЕ ВРЕМЕНА И ШИТОТ
 let halachicZmanDefinitions: [ZmanDefinition] = [
 
     // MARK: - תחילת היום
@@ -355,6 +355,8 @@ let halachicZmanSections: [ZmanSection] = {
         "צהריים",
         "אחר הצהריים",
         "ערב",
+        "שקיעה",
+        "בין השמשות",
         "צאת הכוכבים",
         "תעניות",
         "צאת ג׳ כוכבים",
