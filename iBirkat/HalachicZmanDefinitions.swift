@@ -81,7 +81,7 @@ let halachicZmanDefinitions: [ZmanDefinition] = [
     // MARK: - בוקר: קריאת שמע / תפילה
 
     ZmanDefinition(
-        name: "סוף זמן קריאת שמע (מגן אברהם)",
+        name: "סו\"ז ק\"ש (מג\"א)",
         category: "בוקר",
         opinions: [
             ZmanOpinionDefinition(
@@ -100,7 +100,7 @@ let halachicZmanDefinitions: [ZmanDefinition] = [
     ),
 
     ZmanDefinition(
-        name: "סוף זמן קריאת שמע (גר\"א ובעל התניא)",
+        name: "סו\"ז ק\"ש (גר\"א והבע\"ט)",
         category: "בוקר",
         opinions: [
             ZmanOpinionDefinition(
@@ -111,7 +111,7 @@ let halachicZmanDefinitions: [ZmanDefinition] = [
     ),
 
     ZmanDefinition(
-        name: "סוף זמן תפילה (מגן אברהם)",
+        name: "סו\"ז תפילה (מג\"א)",
         category: "בוקר",
         opinions: [
             ZmanOpinionDefinition(
@@ -130,7 +130,7 @@ let halachicZmanDefinitions: [ZmanDefinition] = [
     ),
 
     ZmanDefinition(
-        name: "סוף זמן תפילה (גר\"א ובעל התניא)",
+        name: "סו\"ז תפילה (גר\"א והבע\"ט)",
         category: "בוקר",
         opinions: [
             ZmanOpinionDefinition(
@@ -140,34 +140,32 @@ let halachicZmanDefinitions: [ZmanDefinition] = [
         ]
     ),
 
-    // MARK: - צהריים ואחר הצהריים
+    // MARK: - צהריים
 
     ZmanDefinition(
         name: "חצות היום",
         category: "צהריים",
         opinions: [
             ZmanOpinionDefinition(
-                title: "אמצע היום",
+                title: "שש שעות זמניות מהנץ",
                 note: "אמצע הזמן בין הנץ לשקיעה"
             )
         ]
     ),
+
+    // MARK: - אחר הצהריים
 
     ZmanDefinition(
         name: "מנחה גדולה",
         category: "אחר הצהריים",
         opinions: [
             ZmanOpinionDefinition(
-                title: "30 דקות שוות אחר חצות",
-                note: nil
+                title: "חצות + 30 דקות במעלות",
+                note: "זמן לכתחילה למנחה"
             ),
             ZmanOpinionDefinition(
-                title: "גר\"א ובעל התניא (לחומרא)",
-                note: "חצות + חצי שעה זמנית"
-            ),
-            ZmanOpinionDefinition(
-                title: "מגן אברהם לפי 72 דקות שוות",
-                note: "חישוב שעות זמניות לפי היום הארוך (72 דקות)"
+                title: "חצות + ½ שעה זמנית",
+                note: "חצי שעה זמנית אחרי חצות"
             )
         ]
     ),
@@ -177,48 +175,76 @@ let halachicZmanDefinitions: [ZmanDefinition] = [
         category: "אחר הצהריים",
         opinions: [
             ZmanOpinionDefinition(
-                title: "גר\"א ובעל התניא",
-                note: "ט׳ שעות ומחצה מהנץ"
-            ),
-            ZmanOpinionDefinition(
-                title: "מגן אברהם לפי 72 דקות שוות",
-                note: "ט׳ שעות ומחצה לפי חישוב מ\"א"
+                title: "9.5 שעות זמניות מהנץ",
+                note: "תשע שעות ומחצה זמניות"
             )
         ]
     ),
+
+    // MARK: - ערב
 
     ZmanDefinition(
         name: "פלג המנחה",
-        category: "אחר הצהריים",
-        opinions: [
-            ZmanOpinionDefinition(
-                title: "גר\"א ובעל התניא",
-                note: "י׳ שעות ורביע מהנץ"
-            ),
-            ZmanOpinionDefinition(
-                title: "מגן אברהם לפי 72 דקות שוות",
-                note: "י׳ שעות ורביע לפי חישוב מ\"א"
-            )
-        ]
-    ),
-
-    // MARK: - שקיעה
-
-    ZmanDefinition(
-        name: "שקיעת החמה",
         category: "ערב",
         opinions: [
             ZmanOpinionDefinition(
-                title: "מישור בגובה פני הים",
-                note: "שקיעת דיסק השמש על קו האופק"
+                title: "10.75 שעות זמניות מהנץ",
+                note: "פלג לפי הגר\"א"
+            ),
+            ZmanOpinionDefinition(
+                title: "11 שעות זמניות מהנץ",
+                note: "פלג לפי מג\"א"
             )
         ]
     ),
 
-    // MARK: - לילה לגר\"א
+    ZmanDefinition(
+        name: "תוספת שבת/יו\"ט",
+        category: "ערב",
+        opinions: [
+            ZmanOpinionDefinition(
+                title: "18 דקות לפני השקיעה",
+                note: "מנהג ירושלים והפוסקים"
+            ),
+            ZmanOpinionDefinition(
+                title: "40 דקות לפני השקיעה",
+                note: "מנהג חלק מקהילות אשכנז"
+            )
+        ]
+    ),
+
+    // MARK: - שקיעה / בין השמשות
 
     ZmanDefinition(
-        name: "לילה לגר\"א – ג׳ רבעי מיל",
+        name: "שקיעת החמה",
+        category: "שקיעה",
+        opinions: [
+            ZmanOpinionDefinition(
+                title: "מישור בגובה פני הים",
+                note: "שקיעה גיאומטרית (0°)"
+            )
+        ]
+    ),
+
+    ZmanDefinition(
+        name: "בין השמשות דרבנו תם",
+        category: "בין השמשות",
+        opinions: [
+            ZmanOpinionDefinition(
+                title: "3/4 מיל אחרי השקיעה",
+                note: "כ־13.5 דקות זמניות אחרי שקיעה"
+            ),
+            ZmanOpinionDefinition(
+                title: "4/5 מיל אחרי השקיעה",
+                note: "כ־18 דקות זמניות אחרי שקיעה"
+            )
+        ]
+    ),
+
+    // MARK: - צאת הכוכבים
+
+    ZmanDefinition(
+        name: "צאת הכוכבים (רגיל)",
         category: "צאת הכוכבים",
         opinions: [
             ZmanOpinionDefinition(
@@ -257,7 +283,7 @@ let halachicZmanDefinitions: [ZmanDefinition] = [
         ]
     ),
 
-    // MARK: - צאת ג׳ כוכבים / מוצ\"ש
+    // MARK: - צאת ג׳ כוכבים / מוצ"ש
 
     ZmanDefinition(
         name: "לילה – צאת ג׳ כוכבים",
