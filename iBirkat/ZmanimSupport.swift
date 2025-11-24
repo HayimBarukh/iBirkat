@@ -181,6 +181,7 @@ final class ZmanimProvider {
         let tzeit40 = cal.getTzais(40.0)
 
         let nightRabbeinuTam72 = cal.getTzais72Zmanis()
+        let chatzotLayla = cal.getChatzosLayla()
 
         var items: [ZmanItem] = []
 
