@@ -246,10 +246,41 @@ struct ZmanimView: View {
         .buttonStyle(.plain)
     }
 
+    private var compactDateSelector: some View {
+        HStack(spacing: 10) {
+            Button {
+                shiftDate(by: -1)
+            } label: {
+                Image(systemName: "chevron.backward")
+                    .font(.system(size: 16, weight: .semibold))
+            }
+
+            VStack(spacing: 2) {
+                Text(hebrewInfo.dayOfWeek)
+                    .font(.subheadline.weight(.semibold))
+                Text(hebrewInfo.hebrewDateText)
+                    .font(.caption)
+            }
+            .frame(width: 150)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                resetDateToToday()
+            }
+
+            Button {
+                shiftDate(by: 1)
+            } label: {
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 16, weight: .semibold))
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
     private var bottomDateSelector: some View {
-        dateSelector
+        compactDateSelector
             .padding(.horizontal, 16)
-            .padding(.vertical, 8)
+            .padding(.vertical, 6)
             .frame(maxWidth: .infinity)
             .background(.ultraThinMaterial)
             .ignoresSafeArea(edges: .bottom)
@@ -456,7 +487,7 @@ struct ZmanimView: View {
                     }
 
                 opinionPicker(for: item)
-                    .frame(maxWidth: 360)
+                    .frame(maxWidth: 320)
                     .padding(18)
                     .background(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -515,7 +546,7 @@ struct ZmanimView: View {
 
     private func opinionPicker(for item: ZmanItem) -> some View {
         let selectedOpinion = selectedOpinions[item.id] ?? item.defaultOpinion
-        let maxHeight = UIScreen.main.bounds.height * 0.55
+        let maxHeight = UIScreen.main.bounds.height * 0.45
 
         return ScrollView {
             VStack(alignment: .trailing, spacing: 12) {
