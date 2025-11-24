@@ -121,237 +121,153 @@ final class ZmanimProvider {
     /// Время зажигания свечей (минут до заката)
     func candleLighting(for date: Date, minutesBeforeSunset: Int) -> Date? {
         guard let sunset = sunset(for: date) else { return nil }
-        return sunset.addingTimeInterval(-Double(minutesBeforeSunset) * 60)
+        return Calendar.current.date(byAdding: .minute, value: -minutesBeforeSunset, to: sunset)
     }
 
-    /// Время выхода субботы/праздника (смещение в минутах после заката)
-    func motzaeiShabbatOrYomTov(for date: Date, offsetMinutes: Int = 40) -> Date? {
-        guard let sunset = sunset(for: date) else { return nil }
-        return sunset.addingTimeInterval(Double(offsetMinutes) * 60)
-    }
-
-    /// Главный метод: список зманим на день
-    func zmanim(
-        for date: Date,
-        profile: HalachicProfile
-    ) -> [ZmanItem] {
+    /// Все зманим для указанной даты и профиля
+    func zmanim(for date: Date, profile: HalachicProfile) -> [ZmanItem] {
         cal.workingDate = date
 
-        guard
-            let sunrise = cal.getSunrise(),
-            let sunset  = cal.getSunset()
-        else {
-            return []
-        }
+        let candleOffsetMinutes = UserDefaults.standard.integer(forKey: "candleLightingOffset")
+        let candleLighting = candleLighting(for: date, minutesBeforeSunset: candleOffsetMinutes)
 
-        // День от נץ до שקיעה — שעה זמנית (גר״א / בעל התניא)
-        let dayNetzToShkia = sunset.timeIntervalSince(sunrise)
-        let shaahZmanitGRA = dayNetzToShkia / 12.0
-        let chatzot        = sunrise.addingTimeInterval(dayNetzToShkia / 2.0)
+        let dawn90    = cal.getAlosHashachar(90.0)
+        let dawn72    = cal.getAlosHashachar(72.0, useElevation: false)
+        let dawn161   = cal.getAlosHashachar(16.1, useElevation: false)
 
-        // ---------------------------------------------------------
-        // ALOT HASHACHAR
-        // ---------------------------------------------------------
-        //
-        // 🟠 ס״פ: 72 דקות שוות קודם הנץ
-        // 🔵 א״ש / 🟣 חב״ד: 72 דקות זמניות (≈16.1°)
-        // кастом — как ס״פ по умолчанию.
-        //
+        let tallit115 = cal.getMisheyakir(11.5, useElevation: false)
+        let tallit11  = cal.getMisheyakir(11.0, useElevation: false)
+        let tallit102 = cal.getMisheyakir(10.2, useElevation: false)
 
-        // 90 минут זמניות (1.5 שעה זמנית)
-        let alos90Zmaniyot = sunrise.addingTimeInterval(-1.5 * shaahZmanitGRA)
+        let hanetz    = cal.getSunrise()
 
-        // 72 минуты швот
-        let alos72Fixed    = sunrise.addingTimeInterval(-72.0 * 60.0)
+        let sofZmanShmaMGA90   = cal.getSofZmanShmaMGA()
+        let sofZmanShmaMGA72   = cal.getSofZmanShmaMGA72Minutes()
+        let sofZmanShmaMGA72Deg = cal.getSofZmanShma(72.0)
 
-        // 72 минуты זמניות (1.2 שעה זמנית) — ≈16.1°
-        let alos72Zmaniyot = sunrise.addingTimeInterval(-1.2 * shaahZmanitGRA)
+        let sofZmanShmaGRA = cal.getSofZmanShmaGRA()
 
-        let alos90Opinion = ZmanOpinion(
-            id: "alos-90-zmaniyot",
-            title: "90 דקות בזמניות קודם הנץ",
-            time: timeString(alos90Zmaniyot)
-        )
+        let sofZmanTefilahMGA90 = cal.getSofZmanTfilaMGA()
+        let sofZmanTefilahMGA72 = cal.getSofZmanTfilaMGA72Minutes()
+        let sofZmanTefilahMGA72Deg = cal.getSofZmanTfila(72.0)
 
-        let alos72FixedOpinion = ZmanOpinion(
-            id: "alos-72-fixed",
-            title: "72 דקות שוות קודם הנץ",
-            time: timeString(alos72Fixed)
-        )
+        let sofZmanTefilahGRA = cal.getSofZmanTfilaGRA()
 
-        let alos72ZmaniyotOpinion = ZmanOpinion(
-            id: "alos-72-zmaniyot",
-            title: "72 דקות בזמניות (≈16.1°) קודם הנץ",
-            time: timeString(alos72Zmaniyot)
-        )
+        let chatzot = cal.getChatzos()
 
-        let alosOpinions: [ZmanOpinion]
-        switch profile {
-        case .sephardi, .custom:
-            // базовая — 72 швот
-            alosOpinions = [
-                alos72FixedOpinion,
-                alos72ZmaniyotOpinion,
-                alos90Opinion
-            ]
-        case .ashkenazi, .chabad:
-            // базовая — 72 זמניות
-            alosOpinions = [
-                alos72ZmaniyotOpinion,
-                alos72FixedOpinion,
-                alos90Opinion
-            ]
-        }
+        let minchaGedolaMGA = cal.getMinchaGedolaMGA()
+        let minchaGedolaGRA = cal.getMinchaGedolaGRA()
 
-        // ---------------------------------------------------------
-        // זמן ציצית ותפילין (משיכיר)
-        // ---------------------------------------------------------
-        //
-        // ס״פ – ≈11° (≈48 мин)
-        // א״ש / חב״ד – ≈11.5° (≈52 мин)
-        // לחומרא – ≈10.2° (≈46 мин)
-        //
+        let minchaKetanaGRA = cal.getMinchaKetanaGRA()
 
-        let tzitzit11   = sunrise.addingTimeInterval(-48 * 60) // ≈11°
-        let tzitzit11_5 = sunrise.addingTimeInterval(-52 * 60) // ≈11.5°
-        let tzitzit10_2 = sunrise.addingTimeInterval(-46 * 60) // ≈10.2°
+        let plagGRA = cal.getPlagHaminchaGRA()
+        let plagMGA = cal.getPlagHaminchaMGA()
 
-        let tz11 = ZmanOpinion(
-            id: "tzitzit-11",
-            title: "≈11° מתחת לאופק (≈48 דקות קודם הנץ)",
-            time: timeString(tzitzit11)
-        )
+        let sunset = cal.getSunset()
 
-        let tz11_5 = ZmanOpinion(
-            id: "tzitzit-11.5",
-            title: "≈11.5° מתחת לאופק (≈52 דקות קודם הנץ)",
-            time: timeString(tzitzit11_5)
-        )
+        let tzeit13_5 = cal.getTzais(13.5)
+        let tzeit16_875 = cal.getTzais(16.875)
+        let tzeit18 = cal.getTzais(18.0)
+        let tzeit24 = cal.getTzais(24.0)
 
-        let tz10_2 = ZmanOpinion(
-            id: "tzitzit-10.2",
-            title: "≈10.2° מתחת לאופק (≈46 דקות קודם הנץ, לחומרא)",
-            time: timeString(tzitzit10_2)
-        )
+        let nightGRA13_5 = cal.getTzaisGeonim3Stars18Minutes()
+        let nightGRA18 = cal.getTzais(18.0)
+        let nightGRA22_5 = cal.getTzais(22.5)
+        let nightGRA24 = cal.getTzais(24.0)
 
-        let tzitzitOpinions: [ZmanOpinion]
-        switch profile {
-        case .sephardi, .custom:
-            tzitzitOpinions = [tz11, tz11_5, tz10_2]
-        case .ashkenazi, .chabad:
-            tzitzitOpinions = [tz11_5, tz11, tz10_2]
-        }
+        let taanitTokchinski = cal.getTzais(27.0)
+        let tzeit34 = cal.getTzais(34.0)
+        let tzeit36 = cal.getTzais(36.0)
+        let tzeit40 = cal.getTzais(40.0)
 
-        // ---------------------------------------------------------
-        // СОФ ЗМАН К״ש / ТФИЛА (Мג״א / גר״א)
-        // ---------------------------------------------------------
-
-        enum MADayVariant {
-            case ma90Zmaniyot
-            case ma72Fixed
-            case ma72Zmaniyot
-        }
-
-        func maBounds(_ variant: MADayVariant) -> (start: Date, end: Date) {
-            switch variant {
-            case .ma90Zmaniyot:
-                let delta = 1.5 * shaahZmanitGRA
-                return (sunrise.addingTimeInterval(-delta),
-                        sunset.addingTimeInterval(delta))
-
-            case .ma72Fixed:
-                let delta = 72.0 * 60.0
-                return (sunrise.addingTimeInterval(-delta),
-                        sunset.addingTimeInterval(delta))
-
-            case .ma72Zmaniyot:
-                let delta = (72.0 / 60.0) * shaahZmanitGRA
-                return (sunrise.addingTimeInterval(-delta),
-                        sunset.addingTimeInterval(delta))
-            }
-        }
-
-        func maSofZmanShma(_ variant: MADayVariant) -> Date {
-            let (start, end) = maBounds(variant)
-            let dayLen = end.timeIntervalSince(start)
-            return start.addingTimeInterval(dayLen * 3.0 / 12.0)
-        }
-
-        func maSofZmanTfila(_ variant: MADayVariant) -> Date {
-            let (start, end) = maBounds(variant)
-            let dayLen = end.timeIntervalSince(start)
-            return start.addingTimeInterval(dayLen * 4.0 / 12.0)
-        }
-
-        // גר״א / בעל התניא: день от נץ до שקיעה
-        let sofShmaGRA  = sunrise.addingTimeInterval(3.0 * shaahZmanitGRA)
-        let sofTfilaGRA = sunrise.addingTimeInterval(4.0 * shaahZmanitGRA)
-
-        // ---------------------------------------------------------
-        // Минха, плаг
-        // ---------------------------------------------------------
-
-        let minchaGdolaGRA  = chatzot.addingTimeInterval(shaahZmanitGRA / 2.0)
-        let minchaGdolaMA72 = chatzot.addingTimeInterval(30.0 * 60.0)
-
-        let minchaKetanaGRA  = sunrise.addingTimeInterval(9.5 * shaahZmanitGRA)
-        let minchaKetanaMA72 = minchaKetanaGRA
-
-        let plagGRA  = sunrise.addingTimeInterval(10.75 * shaahZmanitGRA)
-        let plagMA72 = plagGRA
-
-        // ---------------------------------------------------------
-        // Ночь / выход звёзд
-        // ---------------------------------------------------------
-
-        let nightGRA13_5 = sunset.addingTimeInterval(13.5 * 60.0)
-        let nightGRA18   = sunset.addingTimeInterval(18.0 * 60.0)
-        let nightGRA22_5 = sunset.addingTimeInterval(22.5 * 60.0)
-        let nightGRA24   = sunset.addingTimeInterval(24.0 * 60.0)
-
-        let taanitTokchinski = sunset.addingTimeInterval(27.0 * 60.0)
-
-        let tzeit34 = sunset.addingTimeInterval(34.0 * 60.0)
-        let tzeit36 = sunset.addingTimeInterval(36.0 * 60.0)
-        let tzeit40 = sunset.addingTimeInterval(40.0 * 60.0)
-
-        let nightRabbeinuTam72 = sunset.addingTimeInterval(72.0 * 60.0)
-
-        let chatzotLayla = chatzot.addingTimeInterval(12.0 * 60.0 * 60.0)
-
-        // ---------------------------------------------------------
-        // Формирование списка
-        // ---------------------------------------------------------
+        let nightRabbeinuTam72 = cal.getTzais72Zmanis()
 
         var items: [ZmanItem] = []
 
         items.append(
             ZmanItem(
-                id: "alos",
+                id: "alos-hashachar",
                 title: "עלות השחר",
-                opinions: alosOpinions,
+                opinions: [
+                    ZmanOpinion(
+                        id: "dawn-90",
+                        title: "90 דקות במעלות קודם הנץ",
+                        time: timeString(dawn90)
+                    ),
+                    ZmanOpinion(
+                        id: "dawn-72-fixed",
+                        title: "72 דקות שוות קודם הנץ",
+                        time: timeString(dawn72)
+                    ),
+                    ZmanOpinion(
+                        id: "dawn-72-deg",
+                        title: "72 דקות לפי 16.1 מעלות",
+                        time: timeString(dawn161)
+                    )
+                ],
                 subtitle: nil
             )
         )
 
         items.append(
             ZmanItem(
-                id: "tzitzitTefillin",
+                id: "tallit-tefillin",
                 title: "זמן ציצית ותפילין",
-                opinions: tzitzitOpinions,
+                opinions: [
+                    ZmanOpinion(
+                        id: "tallit-11.5",
+                        title: "11.5 מעלות תחת האופק",
+                        time: timeString(tallit115)
+                    ),
+                    ZmanOpinion(
+                        id: "tallit-11",
+                        title: "11 מעלות תחת האופק",
+                        time: timeString(tallit11)
+                    ),
+                    ZmanOpinion(
+                        id: "tallit-10.2",
+                        title: "10.2 מעלות תחת האופק",
+                        time: timeString(tallit102)
+                    )
+                ],
                 subtitle: nil
             )
         )
 
         items.append(
             ZmanItem(
-                id: "netz",
+                id: "hanetz-hachama",
                 title: "הנץ החמה",
                 opinions: [
                     ZmanOpinion(
-                        id: "netz-sea",
+                        id: "sunrise-sea-level",
                         title: "מישור בגובה פני הים",
-                        time: timeString(sunrise)
+                        time: timeString(hanetz)
+                    )
+                ],
+                subtitle: "תחילת היום המעשי"
+            )
+        )
+
+        items.append(
+            ZmanItem(
+                id: "sof-zman-shma-MGA",
+                title: "סו\"ז ק\"ש (מג\"א)",
+                opinions: [
+                    ZmanOpinion(
+                        id: "shma-mga-90",
+                        title: "לפי 90 דקות במעלות",
+                        time: timeString(sofZmanShmaMGA90)
+                    ),
+                    ZmanOpinion(
+                        id: "shma-mga-72-fixed",
+                        title: "לפי 72 דקות שוות",
+                        time: timeString(sofZmanShmaMGA72)
+                    ),
+                    ZmanOpinion(
+                        id: "shma-mga-72-deg",
+                        title: "לפי 72 דקות במעלות",
+                        time: timeString(sofZmanShmaMGA72Deg)
                     )
                 ],
                 subtitle: nil
@@ -360,38 +276,13 @@ final class ZmanimProvider {
 
         items.append(
             ZmanItem(
-                id: "sofShma-MA",
-                title: "סוף זמן קריאת שמע (מגן אברהם)",
+                id: "sof-zman-shma-GRA",
+                title: "סו\"ז ק\"ש (גר\"א והבע\"ט)",
                 opinions: [
                     ZmanOpinion(
-                        id: "sofShma-MA-90-zmaniyot",
-                        title: "לפי 90 דקות בזמניות",
-                        time: timeString(maSofZmanShma(.ma90Zmaniyot))
-                    ),
-                    ZmanOpinion(
-                        id: "sofShma-MA-72-fixed",
-                        title: "לפי 72 דקות שוות",
-                        time: timeString(maSofZmanShma(.ma72Fixed))
-                    ),
-                    ZmanOpinion(
-                        id: "sofShma-MA-72-zmaniyot",
-                        title: "לפי 72 דקות בזמניות",
-                        time: timeString(maSofZmanShma(.ma72Zmaniyot))
-                    )
-                ],
-                subtitle: "סוף ג׳ שעות זמניות"
-            )
-        )
-
-        items.append(
-            ZmanItem(
-                id: "sofShma-GRA",
-                title: "סוף זמן קריאת שמע (גר״א ובעל התניא)",
-                opinions: [
-                    ZmanOpinion(
-                        id: "sofShma-GRA-main",
-                        title: "ג׳ שעות זמניות מן הנץ",
-                        time: timeString(sofShmaGRA)
+                        id: "shma-gra",
+                        title: "גר\"א ובעל התניא",
+                        time: timeString(sofZmanShmaGRA)
                     )
                 ],
                 subtitle: nil
@@ -400,38 +291,38 @@ final class ZmanimProvider {
 
         items.append(
             ZmanItem(
-                id: "sofTfila-MA",
-                title: "סוף זמן תפילה (מגן אברהם)",
+                id: "sof-zman-tefila-MGA",
+                title: "סו\"ז תפילה (מג\"א)",
                 opinions: [
                     ZmanOpinion(
-                        id: "sofTfila-MA-90-zmaniyot",
-                        title: "לפי 90 דקות בזמניות",
-                        time: timeString(maSofZmanTfila(.ma90Zmaniyot))
+                        id: "tefila-mga-90",
+                        title: "לפי 90 דקות במעלות",
+                        time: timeString(sofZmanTefilahMGA90)
                     ),
                     ZmanOpinion(
-                        id: "sofTfila-MA-72-fixed",
+                        id: "tefila-mga-72-fixed",
                         title: "לפי 72 דקות שוות",
-                        time: timeString(maSofZmanTfila(.ma72Fixed))
+                        time: timeString(sofZmanTefilahMGA72)
                     ),
                     ZmanOpinion(
-                        id: "sofTfila-MA-72-zmaniyot",
-                        title: "לפי 72 דקות בזמניות",
-                        time: timeString(maSofZmanTfila(.ma72Zmaniyot))
+                        id: "tefila-mga-72-deg",
+                        title: "לפי 72 דקות במעלות",
+                        time: timeString(sofZmanTefilahMGA72Deg)
                     )
                 ],
-                subtitle: "סוף ד׳ שעות זמניות"
+                subtitle: nil
             )
         )
 
         items.append(
             ZmanItem(
-                id: "sofTfila-GRA",
-                title: "סוף זמן תפילה (גר״א ובעל התניא)",
+                id: "sof-zman-tefila-GRA",
+                title: "סו\"ז תפילה (גר\"א והבע\"ט)",
                 opinions: [
                     ZmanOpinion(
-                        id: "sofTfila-GRA-main",
-                        title: "ד׳ שעות זמניות מן הנץ",
-                        time: timeString(sofTfilaGRA)
+                        id: "tefila-gra",
+                        title: "גר\"א ובעל התניא",
+                        time: timeString(sofZmanTefilahGRA)
                     )
                 ],
                 subtitle: nil
@@ -444,8 +335,8 @@ final class ZmanimProvider {
                 title: "חצות היום",
                 opinions: [
                     ZmanOpinion(
-                        id: "chatzot-main",
-                        title: "אמצע היום ההלכתי",
+                        id: "chatzot-hayom",
+                        title: "שש שעות זמניות מהנץ",
                         time: timeString(chatzot)
                     )
                 ],
@@ -455,38 +346,33 @@ final class ZmanimProvider {
 
         items.append(
             ZmanItem(
-                id: "minchaGedola",
+                id: "mincha-gedola",
                 title: "מנחה גדולה",
                 opinions: [
                     ZmanOpinion(
-                        id: "minchaG-GRA",
-                        title: "גר\"א ובעל התניא",
-                        time: timeString(minchaGdolaGRA)
+                        id: "mincha-gedola-gra",
+                        title: "חצות + 30 דקות במעלות",
+                        time: timeString(minchaGedolaGRA)
                     ),
                     ZmanOpinion(
-                        id: "minchaG-MA-72-fixed",
-                        title: "לחומרא (מגן אברהם, 30 דקות שוות אחר חצות)",
-                        time: timeString(minchaGdolaMA72)
+                        id: "mincha-gedola-mga",
+                        title: "חצות + ½ שעה זמנית",
+                        time: timeString(minchaGedolaMGA)
                     )
                 ],
-                subtitle: nil
+                subtitle: "זמן לכתחילה למנחה"
             )
         )
 
         items.append(
             ZmanItem(
-                id: "minchaKetana",
+                id: "mincha-ktana",
                 title: "מנחה קטנה",
                 opinions: [
                     ZmanOpinion(
-                        id: "minchaK-GRA",
-                        title: "גר\"א ובעל התניא",
+                        id: "mincha-ketana-gra",
+                        title: "9.5 שעות זמניות מהנץ",
                         time: timeString(minchaKetanaGRA)
-                    ),
-                    ZmanOpinion(
-                        id: "minchaK-MA-72-fixed",
-                        title: "מגן אברהם (72 דקות שוות)",
-                        time: timeString(minchaKetanaMA72)
                     )
                 ],
                 subtitle: nil
@@ -495,21 +381,41 @@ final class ZmanimProvider {
 
         items.append(
             ZmanItem(
-                id: "plagHamincha",
+                id: "plag-hamincha",
                 title: "פלג המנחה",
                 opinions: [
                     ZmanOpinion(
-                        id: "plag-GRA",
-                        title: "גר\"א ובעל התניא",
+                        id: "plag-gra",
+                        title: "10.75 שעות זמניות מהנץ",
                         time: timeString(plagGRA)
                     ),
                     ZmanOpinion(
-                        id: "plag-MA-72-fixed",
-                        title: "מגן אברהם (72 דקות שוות)",
-                        time: timeString(plagMA72)
+                        id: "plag-mga",
+                        title: "11 שעות זמניות מהנץ",
+                        time: timeString(plagMGA)
                     )
                 ],
                 subtitle: nil
+            )
+        )
+
+        items.append(
+            ZmanItem(
+                id: "candle-lighting",
+                title: "תוספת שבת/יו\"ט",
+                opinions: [
+                    ZmanOpinion(
+                        id: "candle-18",
+                        title: "18 דקות לפני השקיעה",
+                        time: timeString(candleLighting)
+                    ),
+                    ZmanOpinion(
+                        id: "candle-40",
+                        title: "40 דקות לפני השקיעה",
+                        time: timeString(candleLighting(for: date, minutesBeforeSunset: 40))
+                    )
+                ],
+                subtitle: "זמן הדלקת נרות (מותאם להעדפה)"
             )
         )
 
