@@ -50,6 +50,11 @@ enum HalachicProfile: String, CaseIterable, Identifiable {
 
     var id: Self { self }
 
+    /// Базовые профили без кастомного режима
+    static var basicCases: [HalachicProfile] {
+        [.sephardi, .ashkenazi, .chabad]
+    }
+
     var shortSymbol: String {
         switch self {
         case .sephardi:  return "ע״מ"
@@ -65,6 +70,15 @@ enum HalachicProfile: String, CaseIterable, Identifiable {
         case .ashkenazi: return "אשכנז (ישיבתי)"
         case .chabad:    return "חב״ד"
         case .custom:    return "פרופיל מותאם אישית"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .sephardi:  return "menorah"
+        case .ashkenazi: return "books.vertical"
+        case .chabad:    return "staroflife"
+        case .custom:    return "slider.horizontal.3"
         }
     }
 }

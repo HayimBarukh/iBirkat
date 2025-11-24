@@ -183,7 +183,7 @@ struct ZmanimView: View {
 
                 Spacer(minLength: 10)
 
-                VStack(alignment: .trailing, spacing: 10) {
+               VStack(alignment: .trailing, spacing: 10) {
                     profilePicker
                     dateSelector
                 }
@@ -579,16 +579,18 @@ struct ZmanimView: View {
             .frame(width: 140, alignment: .leading)
 
             VStack(alignment: .trailing, spacing: 6) {
-                Text(item.title)
+               Text(item.title)
                     .font(.headline)
                     .multilineTextAlignment(.trailing)
                     .fixedSize(horizontal: false, vertical: true)
 
-                Text(item.subtitle)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.trailing)
-                    .fixedSize(horizontal: false, vertical: true)
+                if let subtitle = item.subtitle {
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.trailing)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
 
             Spacer(minLength: 12)
@@ -622,18 +624,20 @@ struct ZmanimView: View {
             }
             .frame(width: 140, alignment: .leading)
 
-            VStack(alignment: .trailing, spacing: 6) {
-                Text(item.title)
-                    .font(.headline)
-                    .multilineTextAlignment(.trailing)
-                    .fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .trailing, spacing: 6) {
+                    Text(item.title)
+                        .font(.headline)
+                        .multilineTextAlignment(.trailing)
+                        .fixedSize(horizontal: false, vertical: true)
 
-                Text(item.subtitle)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.trailing)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+                if let subtitle = item.subtitle {
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.trailing)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                }
 
             Spacer(minLength: 12)
         }
