@@ -88,10 +88,14 @@ struct ZmanimView: View {
         geoLocation.locationName ?? "מקום נוכחי"
     }
 
+    private var isPhone: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone
+    }
+
     // MARK: - Body
 
     var body: some View {
-        GeometryReader { proxy in
+        GeometryReader { _ in
             ZStack(alignment: .topLeading) {
                 Color(.systemBackground)
                     .ignoresSafeArea()
@@ -124,6 +128,14 @@ struct ZmanimView: View {
                     syncSelectedOpinionsWithProfile()
                 }
             }
+            .overlay(alignment: .center) {
+                phoneOpinionOverlay
+            }
+            .safeAreaInset(edge: .bottom) {
+                if isPhone {
+                    bottomDateSelector
+                }
+            }
         }
     }
 
@@ -150,7 +162,9 @@ struct ZmanimView: View {
 
                VStack(alignment: .trailing, spacing: 10) {
                     profilePicker
-                    dateSelector
+                    if !isPhone {
+                        dateSelector
+                    }
                 }
             }
 
@@ -172,29 +186,30 @@ struct ZmanimView: View {
         VStack(alignment: .trailing, spacing: 8) {
             Picker("", selection: $halachicProfileRaw) {
                 ForEach(HalachicProfile.basicCases, id: \.rawValue) { profile in
-                    Text(profile.shortSymbol)
+                    profileLabel(for: profile)
                         .tag(profile.rawValue)
                         .accessibilityLabel(Text(profile.title))
                 }
 
-                Text(HalachicProfile.custom.shortSymbol)
+                profileLabel(for: .custom)
                     .tag(HalachicProfile.custom.rawValue)
                     .accessibilityLabel(Text(HalachicProfile.custom.title))
             }
             .pickerStyle(.segmented)
+        }
+    }
 
-            if halachicProfile == .custom {
-                HStack(spacing: 12) {
-                    Spacer()
-                    Button(role: .destructive) {
-                        resetCustomProfileToSephardiDefaults()
-                    } label: {
-                        Label("איפוס דעות מותאמות", systemImage: "arrow.counterclockwise")
-                            .labelStyle(.titleAndIcon)
-                    }
-                    .buttonStyle(.bordered)
+    @ViewBuilder
+    private func profileLabel(for profile: HalachicProfile) -> some View {
+        let text = isPhone ? profile.shortSymbol : profile.tabletLabel
+
+        if profile == .custom {
+            Text(text)
+                .onLongPressGesture(minimumDuration: 1.0) {
+                    resetCustomProfileToSephardiDefaults()
                 }
-            }
+        } else {
+            Text(text)
         }
     }
 
@@ -216,16 +231,10 @@ struct ZmanimView: View {
                     .font(.subheadline)
             }
             .frame(width: 160)
-
-            Button {
-                date = Date()
-                lightHaptic()
-            } label: {
-                Text("היום")
-                    .font(.subheadline.weight(.semibold))
+            .contentShape(Rectangle())
+            .onTapGesture {
+                resetDateToToday()
             }
-            .buttonStyle(.bordered)
-            .tint(.accentColor)
 
             Button {
                 shiftDate(by: 1)
@@ -235,6 +244,16 @@ struct ZmanimView: View {
             }
         }
         .buttonStyle(.plain)
+    }
+
+    private var bottomDateSelector: some View {
+        dateSelector
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity)
+            .background(.ultraThinMaterial)
+            .ignoresSafeArea(edges: .bottom)
+            .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: -2)
     }
 
     // MARK: - Zmanim list
@@ -426,6 +445,32 @@ struct ZmanimView: View {
         return timeFormatter.string(from: d)
     }
 
+    @ViewBuilder
+    private var phoneOpinionOverlay: some View {
+        if isPhone, let item = activeZmanItem {
+            ZStack {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        activeZmanItem = nil
+                    }
+
+                opinionPicker(for: item)
+                    .frame(maxWidth: 360)
+                    .padding(18)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color(.systemBackground))
+                    )
+                    .shadow(color: Color.black.opacity(0.2), radius: 18, x: 0, y: 8)
+                    .environment(\.layoutDirection, .rightToLeft)
+            }
+            .transition(.opacity)
+            .animation(.easeInOut(duration: 0.2), value: activeZmanItem?.id)
+        }
+    }
+
+    @ViewBuilder
     private func interactiveZmanButton(for item: ZmanItem) -> some View {
         let isPopoverShown = Binding<Bool>(
             get: { activeZmanItem?.id == item.id },
@@ -436,30 +481,36 @@ struct ZmanimView: View {
             }
         )
 
-        return Button {
+        let button = Button {
             activeZmanItem = item
         } label: {
             interactiveCard(for: item)
         }
         .buttonStyle(.plain)
-        .zmanPopover(isPresented: isPopoverShown, arrowEdge: popoverArrowEdge) {
-            opinionPicker(for: item)
-        }
-        .background(
-            GeometryReader { geo in
-                Color.clear
-                    .onChange(of: activeZmanItem?.id == item.id) { isActive in
-                        guard isActive else { return }
 
-                        let frame = geo.frame(in: .global)
-                        let screenHeight = UIScreen.main.bounds.height
-                        let spaceAbove = frame.minY
-                        let spaceBelow = screenHeight - frame.maxY
+        if isPhone {
+            button
+        } else {
+            button
+                .zmanPopover(isPresented: isPopoverShown, arrowEdge: popoverArrowEdge) {
+                    opinionPicker(for: item)
+                }
+                .background(
+                    GeometryReader { geo in
+                        Color.clear
+                            .onChange(of: activeZmanItem?.id == item.id) { isActive in
+                                guard isActive else { return }
 
-                        popoverArrowEdge = spaceBelow < spaceAbove ? .bottom : .top
+                                let frame = geo.frame(in: .global)
+                                let screenHeight = UIScreen.main.bounds.height
+                                let spaceAbove = frame.minY
+                                let spaceBelow = screenHeight - frame.maxY
+
+                                popoverArrowEdge = spaceBelow < spaceAbove ? .bottom : .top
+                            }
                     }
-            }
-        )
+                )
+        }
     }
 
     private func opinionPicker(for item: ZmanItem) -> some View {
@@ -529,25 +580,25 @@ struct ZmanimView: View {
         let selected = selectedOpinions[item.id] ?? item.defaultOpinion
 
         return HStack(alignment: .center, spacing: 16) {
-            VStack(alignment: .trailing, spacing: 6) {
-               Text(item.title)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(item.title)
                     .font(.headline)
-                    .multilineTextAlignment(.trailing)
+                    .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
 
                 if let subtitle = item.subtitle {
                     Text(subtitle)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                        .multilineTextAlignment(.trailing)
+                        .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 12)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .trailing, spacing: 4) {
                 Text(selected.time)
                     .font(.title2.weight(.semibold))
                     .monospacedDigit()
@@ -558,10 +609,7 @@ struct ZmanimView: View {
                     .lineLimit(2)
                     .minimumScaleFactor(0.8)
             }
-            .frame(width: 150, alignment: .leading)
-
-            Image(systemName: "chevron.down")
-                .foregroundColor(.secondary)
+            .frame(width: 150, alignment: .trailing)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
@@ -576,25 +624,25 @@ struct ZmanimView: View {
         let opinion = item.opinions.first ?? item.defaultOpinion
 
         return HStack(alignment: .center, spacing: 16) {
-            VStack(alignment: .trailing, spacing: 6) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(item.title)
                     .font(.headline)
-                    .multilineTextAlignment(.trailing)
+                    .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
 
                 if let subtitle = item.subtitle {
                     Text(subtitle)
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                        .multilineTextAlignment(.trailing)
+                        .multilineTextAlignment(.leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 12)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .trailing, spacing: 4) {
                 Text(opinion.time)
                     .font(.title2.weight(.semibold))
                     .monospacedDigit()
@@ -605,7 +653,7 @@ struct ZmanimView: View {
                     .lineLimit(2)
                     .minimumScaleFactor(0.8)
             }
-            .frame(width: 150, alignment: .leading)
+            .frame(width: 150, alignment: .trailing)
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
@@ -653,6 +701,11 @@ struct ZmanimView: View {
             date = newDate
             lightHaptic()
         }
+    }
+
+    private func resetDateToToday() {
+        date = Date()
+        lightHaptic()
     }
 
     // MARK: - Кастомный профиль / сохранение мнений

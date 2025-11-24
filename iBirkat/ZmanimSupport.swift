@@ -55,6 +55,15 @@ enum HalachicProfile: String, CaseIterable, Identifiable {
         [.sephardi, .ashkenazi, .chabad]
     }
 
+    var tabletLabel: String {
+        switch self {
+        case .sephardi:  return "עדות המזרח"
+        case .ashkenazi: return "אשכנז"
+        case .chabad:    return "חב״ד"
+        case .custom:    return "מותאם"
+        }
+    }
+
     var shortSymbol: String {
         switch self {
         case .sephardi:  return "ע״מ"
@@ -352,7 +361,7 @@ final class ZmanimProvider {
         items.append(
             ZmanItem(
                 id: "sofShma-MA",
-                title: "סוף זמן קריאת שמע (מגן אברהם)",
+                title: "סו\"ז ק\"ש (מג\"א)",
                 opinions: [
                     ZmanOpinion(
                         id: "sofShma-MA-90-zmaniyot",
@@ -370,14 +379,14 @@ final class ZmanimProvider {
                         time: timeString(maSofZmanShma(.ma72Zmaniyot))
                     )
                 ],
-                subtitle: "סוף ג׳ שעות זמניות"
+                subtitle: nil
             )
         )
 
         items.append(
             ZmanItem(
                 id: "sofShma-GRA",
-                title: "סוף זמן קריאת שמע (גר״א ובעל התניא)",
+                title: "סו\"ז ק\"ש (גר״א והבע״ט)",
                 opinions: [
                     ZmanOpinion(
                         id: "sofShma-GRA-main",
@@ -392,7 +401,7 @@ final class ZmanimProvider {
         items.append(
             ZmanItem(
                 id: "sofTfila-MA",
-                title: "סוף זמן תפילה (מגן אברהם)",
+                title: "סו\"ז תפילה (מג\"א)",
                 opinions: [
                     ZmanOpinion(
                         id: "sofTfila-MA-90-zmaniyot",
@@ -410,14 +419,14 @@ final class ZmanimProvider {
                         time: timeString(maSofZmanTfila(.ma72Zmaniyot))
                     )
                 ],
-                subtitle: "סוף ד׳ שעות זמניות"
+                subtitle: nil
             )
         )
 
         items.append(
             ZmanItem(
                 id: "sofTfila-GRA",
-                title: "סוף זמן תפילה (גר״א ובעל התניא)",
+                title: "סו\"ז תפילה (גר״א והבע״ט)",
                 opinions: [
                     ZmanOpinion(
                         id: "sofTfila-GRA-main",
