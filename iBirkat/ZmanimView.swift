@@ -109,25 +109,6 @@ struct ZmanimView: View {
                         selectedOpinions = [:]
                     }
                 }
-                .confirmationDialog(
-                    "בחר דעה עבור הזמן",
-                    isPresented: Binding(
-                        get: { activeZmanItem != nil },
-                        set: { newValue in if !newValue { activeZmanItem = nil } }
-                    ),
-                    titleVisibility: .visible
-                ) {
-                    if let item = activeZmanItem {
-                        ForEach(item.opinions) { opinion in
-                            Button(opinion.title) {
-                                pickOpinion(item, opinion)
-                            }
-                        }
-                        Button("ביטול", role: .cancel) {
-                            activeZmanItem = nil
-                        }
-                    }
-                }
                 .safeAreaInset(edge: .bottom) {
                     VStack(spacing: 0) {
                         separator
@@ -277,16 +258,59 @@ struct ZmanimView: View {
                     if item.opinions.count <= 1 {
                         nonInteractiveCard(for: item)
                     } else {
-                        Button {
-                            activeZmanItem = item
-                        } label: {
-                            interactiveCard(for: item)
-                        }
-                        .buttonStyle(.plain)
+                        interactiveZmanButton(for: item)
                     }
                 }
             }
         }
+    }
+
+    private func interactiveZmanButton(for item: ZmanItem) -> some View {
+        let isPopoverShown = Binding<Bool>(
+            get: { activeZmanItem?.id == item.id },
+            set: { newValue in
+                if !newValue {
+                    activeZmanItem = nil
+                }
+            }
+        )
+
+        return Button {
+            activeZmanItem = item
+        } label: {
+            interactiveCard(for: item)
+        }
+        .buttonStyle(.plain)
+        .zmanPopover(isPresented: isPopoverShown) {
+            opinionPicker(for: item)
+        }
+    }
+
+    private func opinionPicker(for item: ZmanItem) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("בחר דעה עבור הזמן")
+                .font(.headline)
+                .padding(.bottom, 2)
+
+            ForEach(item.opinions) { opinion in
+                Button(opinion.title) {
+                    pickOpinion(item, opinion)
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, 4)
+            }
+
+            Divider()
+
+            Button("ביטול") {
+                activeZmanItem = nil
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.top, 2)
+        }
+        .padding(14)
     }
 
     private func nonInteractiveCard(for item: ZmanItem) -> some View {
@@ -459,5 +483,30 @@ struct ZmanimView: View {
     private func lightHaptic() {
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func zmanPopover<Content: View>(
+        isPresented: Binding<Bool>,
+        @ViewBuilder content: @escaping () -> Content
+    ) -> some View {
+        if #available(iOS 17.0, *) {
+            popover(
+                isPresented: isPresented,
+                attachmentAnchor: .rect(.bounds),
+                arrowEdge: .top,
+                content: content
+            )
+            .presentationCompactAdaptation(.popover)
+        } else {
+            popover(
+                isPresented: isPresented,
+                attachmentAnchor: .rect(.bounds),
+                arrowEdge: .top,
+                content: content
+            )
+        }
     }
 }
