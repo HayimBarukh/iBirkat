@@ -8,6 +8,7 @@ struct ContentView: View {
     @State private var currentPageIndex: Int = 0
     @State private var selectedPrayer: Prayer = birkatHamazon
     @State private var showSettings: Bool = false
+    @State private var showResetAlert: Bool = false
     
     // Управление переходом на экран зманим
     @State private var navigateToZmanim: Bool = false
@@ -18,8 +19,15 @@ struct ContentView: View {
     @AppStorage("keepScreenOn")   private var keepScreenOn: Bool = false
     @AppStorage("startOnZmanim")  private var startOnZmanim: Bool = false
     
-    // НОВАЯ НАСТРОЙКА: Показывать ли выбор нусаха в Зманим
-    @AppStorage("showZmanimProfiles") private var showZmanimProfiles: Bool = true
+    // Настройки Зманим (доступ для сброса)
+    @AppStorage("candleLightingOffset") private var candleLightingOffset: Int = 18
+    @AppStorage("customOpinionMap") private var customOpinionMapRaw: String = ""
+    @AppStorage("manualElevation") private var manualElevation: Double = 0.0
+    @AppStorage("useManualElevation") private var useManualElevation: Bool = false
+    
+    // Устаревшие настройки (для очистки при сбросе)
+    @AppStorage("havdalahOpinion") private var havdalahOpinion: String = "default"
+    @AppStorage("halachicProfile") private var halachicProfileRaw: String = "sephardi"
 
     @Environment(\.horizontalSizeClass) private var hSizeClass
     @Environment(\.verticalSizeClass)   private var vSizeClass
@@ -271,9 +279,21 @@ struct ContentView: View {
                     Text("פתיחה במסך זמנים")
                 }
                 
-                // НОВЫЙ ПЕРЕКЛЮЧАТЕЛЬ
-                Toggle(isOn: $showZmanimProfiles) {
-                    Text("הצג בחירת נוסח בזמנים")
+                Divider()
+                
+                Button(role: .destructive) {
+                    showResetAlert = true
+                } label: {
+                    Text("אפס הגדרות זמנים (ע״מ)")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .alert("איפוס הגדרות", isPresented: $showResetAlert) {
+                    Button("ביטול", role: .cancel) { }
+                    Button("אפס", role: .destructive) {
+                        resetZmanimSettings()
+                    }
+                } message: {
+                    Text("האם אתה בטוח? כל ההגדרות בזמנים יאופסו למנהג עדות המזרח (ר׳ עובדיה).")
                 }
 
                 Button {
@@ -296,6 +316,17 @@ struct ContentView: View {
                             radius: 18, x: 0, y: 8)
             )
         }
+    }
+    
+    private func resetZmanimSettings() {
+        candleLightingOffset = 18
+        customOpinionMapRaw = ""
+        manualElevation = 0.0
+        useManualElevation = false
+        havdalahOpinion = "default"
+        halachicProfileRaw = "sephardi" // На всякий случай сбрасываем профиль на дефолтный
+        
+        lightHaptic()
     }
 
     // MARK: - Шапка с датой и пикером брохи

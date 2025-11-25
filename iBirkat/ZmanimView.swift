@@ -11,35 +11,48 @@ struct ZmanimView: View {
     @State private var date: Date = Date()
     @State private var selectedOpinions: [String: ZmanOpinion] = [:]
     @State private var activeZmanItem: ZmanItem?
-    @State private var showingCandleOffsetDialog = false
+    @State private var showingSettingsDialog = false
+    @State private var showCopyAlert = false
 
     // Settings
-    @AppStorage("halachicProfile")
-    private var halachicProfileRaw: String = HalachicProfile.sephardi.rawValue
-
     @AppStorage("candleLightingOffset")
     private var candleLightingOffset: Int = 18
+    
+    @AppStorage("manualElevation")
+    private var manualElevation: Double = 0.0
+    
+    @AppStorage("useManualElevation")
+    private var useManualElevation: Bool = false
 
     @AppStorage("customOpinionMap")
     private var customOpinionMapRaw: String = ""
     
-    @AppStorage("showZmanimProfiles")
-    private var showZmanimProfiles: Bool = true
-
     // MARK: - Computed Properties
-    private var halachicProfile: HalachicProfile {
-        HalachicProfile(rawValue: halachicProfileRaw) ?? .sephardi
-    }
 
     private var geoLocation: GeoLocation {
+        if useManualElevation {
+            let baseLoc = locationManager.geoLocation ?? GeoLocation(
+                locationName: "ירושלים", latitude: 31.778, longitude: 35.235, elevation: 0, timeZone: TimeZone(identifier: "Asia/Jerusalem")!
+            )
+            return GeoLocation(
+                locationName: baseLoc.locationName,
+                latitude: baseLoc.latitude,
+                longitude: baseLoc.longitude,
+                elevation: manualElevation,
+                timeZone: baseLoc.timeZone
+            )
+        }
+        
         if let g = locationManager.geoLocation {
             return g
         }
+        
         let tz = TimeZone(identifier: "Asia/Jerusalem") ?? .current
         return GeoLocation(
             locationName: "ירושלים",
             latitude: 31.778,
             longitude: 35.235,
+            elevation: 800,
             timeZone: tz
         )
     }
@@ -49,7 +62,7 @@ struct ZmanimView: View {
     }
 
     private var currentZmanim: [ZmanItem] {
-        provider.zmanim(for: date, profile: halachicProfile)
+        provider.zmanim(for: date)
     }
 
     private var hebrewInfo: JewishDayInfo {
@@ -97,7 +110,7 @@ struct ZmanimView: View {
                             // Блок спец. времени
                             if let special = specialTimesInfo {
                                 specialTimesArea(special)
-                                    .padding(.vertical, 8)
+                                    .padding(.vertical, 6)
                                 Divider()
                             }
 
@@ -112,22 +125,16 @@ struct ZmanimView: View {
                             
                             Color.clear.frame(height: 20)
                         }
+                        .padding(.top, 8)
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .environment(\.layoutDirection, .rightToLeft)
                 .onAppear {
-                    syncSelectedOpinionsWithProfile()
-                }
-                .onChange(of: halachicProfileRaw) { _ in
-                    syncSelectedOpinionsWithProfile()
+                    applyCustomMap()
                 }
                 .onChange(of: date) { _ in
-                    if halachicProfile == .custom {
-                        applyCustomMap()
-                    } else {
-                        selectedOpinions = [:]
-                    }
+                    applyCustomMap()
                 }
                 // Нижняя панель
                 .safeAreaInset(edge: .bottom) {
@@ -136,7 +143,7 @@ struct ZmanimView: View {
                         bottomNavigationRow
                             .padding(.horizontal, 16)
                             .padding(.top, 10)
-                            .padding(.bottom, 8)
+                            .padding(.bottom, 0)
                     }
                     .background(.ultraThinMaterial)
                 }
@@ -149,9 +156,19 @@ struct ZmanimView: View {
                 .padding(.horizontal, 12)
                 .padding(.top, 4)
         }
+        .overlay(alignment: .topTrailing) {
+            copyDebugButton
+                .padding(.horizontal, 12)
+                .padding(.top, 4)
+        }
+        .alert("הועתק ללוח", isPresented: $showCopyAlert) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("כל הנתונים הועתקו לבדיקה")
+        }
     }
 
-    // MARK: - Floating back button
+    // MARK: - Buttons
 
     private var backFloatingButton: some View {
         Button {
@@ -164,6 +181,22 @@ struct ZmanimView: View {
                     Circle().fill(Color(.systemBackground).opacity(0.8))
                         .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 1)
                 )
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private var copyDebugButton: some View {
+        Button {
+            copyDebugData()
+        } label: {
+            Image(systemName: "doc.on.doc")
+                .font(.system(size: 15, weight: .medium))
+                .padding(8)
+                .background(
+                    Circle().fill(Color(.systemBackground).opacity(0.8))
+                        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 1)
+                )
+                .foregroundColor(.blue)
         }
         .buttonStyle(.plain)
     }
@@ -182,83 +215,16 @@ struct ZmanimView: View {
             Text(gregorianText)
                 .font(.caption)
                 .foregroundColor(.secondary)
-
-            if showZmanimProfiles {
-                HStack(spacing: 6) {
-                    profileChip(.custom)
-                    profileChip(.sephardi)
-                    profileChip(.ashkenazi)
-                    profileChip(.chabad)
-                }
-                .padding(.top, 4)
-                .padding(.bottom, 8)
-            } else {
-                Spacer().frame(height: 12)
-            }
+            
+            // Чипсы профилей удалены, добавляем небольшой отступ
+            Spacer().frame(height: 8)
             
             Divider()
         }
         .background(Color(.systemBackground))
     }
 
-    private func profileChip(_ profile: HalachicProfile) -> some View {
-        let isSelected = (profile == halachicProfile)
-        let shortLabel: String
-        let fullLabel: String
-        let showStar: Bool
-
-        switch profile {
-        case .sephardi:
-            shortLabel = "ע״מ"
-            fullLabel  = "עדות המזרח"
-            showStar   = false
-        case .ashkenazi:
-            shortLabel = "א"
-            fullLabel  = "אשכנז"
-            showStar   = false
-        case .chabad:
-            shortLabel = "ח"
-            fullLabel  = "חב״ד"
-            showStar   = false
-        case .custom:
-            shortLabel = "מותאם"
-            fullLabel  = "מותאם אישית"
-            showStar   = true
-        }
-
-        let label = HStack(spacing: 3) {
-            Text(isSelected ? fullLabel : shortLabel)
-                .font(.caption.weight(isSelected ? .semibold : .regular))
-            if showStar {
-                Image(systemName: "star.fill")
-                    .font(.system(size: 8))
-            }
-        }
-        .lineLimit(1)
-        .padding(.horizontal, isSelected ? 10 : 8)
-        .padding(.vertical, 5)
-        .background(
-            Capsule()
-                .fill(isSelected ? Color.blue.opacity(0.15) : Color.gray.opacity(0.1))
-        )
-        .foregroundColor(isSelected ? .blue : .primary)
-
-        return Button {
-            halachicProfileRaw = profile.rawValue
-            lightHaptic()
-        } label: {
-            label
-        }
-        .buttonStyle(.plain)
-        .simultaneousGesture(
-            LongPressGesture(minimumDuration: 0.7).onEnded { _ in
-                guard profile == .custom else { return }
-                resetCustomProfileToSephardiDefaults()
-            }
-        )
-    }
-
-    // MARK: - Rows (Compact)
+    // MARK: - Rows (Compact List)
 
     @ViewBuilder
     private func rowView(for item: ZmanItem) -> some View {
@@ -266,7 +232,7 @@ struct ZmanimView: View {
             let opinion = item.opinions.first!
             compactRow(title: item.title, subtitle: item.subtitle, time: opinion.time, isInteractive: false)
                 .padding(.horizontal, 16)
-                .padding(.vertical, 10)
+                .padding(.vertical, 8)
         } else {
             let isSheetShown = Binding<Bool>(
                 get: { activeZmanItem?.id == item.id },
@@ -279,7 +245,7 @@ struct ZmanimView: View {
                 let selected = selectedOpinions[item.id] ?? item.defaultOpinion
                 compactRow(title: item.title, subtitle: selected.title, time: selected.time, isInteractive: true)
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
+                    .padding(.vertical, 8)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -309,12 +275,10 @@ struct ZmanimView: View {
             Text(time)
                 .font(.body.weight(.medium))
                 .monospacedDigit()
-            
-            // Стрелочка удалена, чтобы время стояло ровно
         }
     }
 
-    // MARK: - Special Times
+    // MARK: - Special Times Area
 
     private struct SpecialTimesInfo {
         let title: String
@@ -324,19 +288,27 @@ struct ZmanimView: View {
 
     private var specialTimesInfo: SpecialTimesInfo? {
         guard let kind = specialDayKind else { return nil }
-        let lighting = provider.candleLighting(for: date, minutesBeforeSunset: candleLightingOffset)
+        let lighting = provider.getCandleLightingTime(for: date, minutesBeforeSunset: candleLightingOffset)
         
         var motzaeiCalendar = Calendar.current
         motzaeiCalendar.timeZone = geoLocation.timeZone
         let motzaeiDate = motzaeiCalendar.date(byAdding: .day, value: 1, to: date)
-        let motzaei = provider.motzaeiShabbatOrYomTov(for: motzaeiDate ?? date, offsetMinutes: 40)
+        
+        // Берем ID мнения из карты выбора пользователя
+        let map = loadCustomOpinionIDs()
+        let havdalahOpinionID = map["havdalah"]
+        
+        let motzaeiStr = provider.getHavdalahTime(
+            for: motzaeiDate ?? date,
+            opinionID: havdalahOpinionID
+        )
 
         let title = (kind == .shabbat) ? "זמני שבת" : "זמני החג"
         
         return SpecialTimesInfo(
             title: title,
-            candleLighting: timeString(lighting),
-            endTime: timeString(motzaei)
+            candleLighting: lighting,
+            endTime: motzaeiStr
         )
     }
     
@@ -345,7 +317,7 @@ struct ZmanimView: View {
         var gregorian = Calendar.current
         gregorian.timeZone = geoLocation.timeZone
         let weekday = gregorian.component(.weekday, from: date)
-        if weekday == 6 { return .shabbat }
+        if weekday == 6 { return .shabbat } // Friday
 
         var hebCal = Calendar(identifier: .hebrew)
         hebCal.timeZone = geoLocation.timeZone
@@ -361,6 +333,9 @@ struct ZmanimView: View {
     private func isYomTov(month: Int, day: Int, isLeapYear: Bool) -> Bool {
         switch (month, day) {
         case (1, 1), (1, 2), (1, 10), (1, 15), (1, 22), (8, 15), (8, 21), (10, 6): return true
+        case (7, 1), (7, 2), (7, 10), (7, 15), (7, 22): return true
+        case (1, 15), (1, 21): return true
+        case (3, 6): return true
         default: return false
         }
     }
@@ -375,21 +350,24 @@ struct ZmanimView: View {
                 Button {
                     lightHaptic()
                     activeZmanItem = nil
-                    showingCandleOffsetDialog = true
+                    showingSettingsDialog = true
                 } label: {
-                    Text("הדלקה: \(candleLightingOffset) דק׳")
+                    Text("הגדרות: \(candleLightingOffset) דק׳ / גובה \(Int(geoLocation.elevation))מ׳")
                         .font(.caption2)
                         .foregroundColor(.secondary)
                         .underline()
                 }
                 .buttonStyle(.plain)
-                .confirmationDialog("בחרי זמן הדלקה", isPresented: $showingCandleOffsetDialog, titleVisibility: .visible) {
-                    ForEach([18, 24, 30, 40], id: \.self) { value in
-                        Button("\(value) דקות") {
-                            candleLightingOffset = value
-                            lightHaptic()
-                        }
-                    }
+                .sheet(isPresented: $showingSettingsDialog) {
+                    SettingsSheet(
+                        candleOffset: $candleLightingOffset,
+                        useManualElev: $useManualElevation,
+                        manualElev: $manualElevation,
+                        customOpinionMapRaw: $customOpinionMapRaw,
+                        selectedOpinions: $selectedOpinions,
+                        currentAutoElev: locationManager.geoLocation?.elevation ?? 0
+                    )
+                    .presentationDetents([.medium])
                 }
             }
             
@@ -424,7 +402,7 @@ struct ZmanimView: View {
         .padding(.horizontal, 16)
     }
 
-    // MARK: - Opinion Picker (Styled)
+    // MARK: - Opinion Picker
 
     private func opinionPicker(for item: ZmanItem) -> some View {
         let selectedOpinion = selectedOpinions[item.id] ?? item.defaultOpinion
@@ -455,16 +433,12 @@ struct ZmanimView: View {
                                 pickOpinion(item, opinion)
                             } label: {
                                 HStack(alignment: .center, spacing: 14) {
+                                    // Радио-кнопка
                                     Circle()
                                         .strokeBorder(isSelected ? Color.blue : Color.gray.opacity(0.3), lineWidth: 2)
                                         .background(Circle().fill(isSelected ? Color.blue : Color.clear))
                                         .frame(width: 22, height: 22)
-                                        .overlay(
-                                            Circle()
-                                                .fill(Color.white)
-                                                .frame(width: 8, height: 8)
-                                                .opacity(isSelected ? 1 : 0)
-                                        )
+                                        .overlay(Circle().fill(Color.white).frame(width: 8, height: 8).opacity(isSelected ? 1 : 0))
 
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(opinion.title)
@@ -472,9 +446,7 @@ struct ZmanimView: View {
                                             .foregroundColor(.primary)
                                             .multilineTextAlignment(.leading)
                                     }
-                                    
                                     Spacer()
-
                                     Text(opinion.time)
                                         .font(.title3.weight(.medium))
                                         .monospacedDigit()
@@ -503,7 +475,7 @@ struct ZmanimView: View {
         .environment(\.layoutDirection, .rightToLeft)
     }
 
-    // MARK: - Bottom navigation
+    // MARK: - Bottom Navigation
 
     private var bottomNavigationRow: some View {
         HStack(spacing: 20) {
@@ -538,7 +510,7 @@ struct ZmanimView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: - Logic & Helpers
+    // MARK: - Helpers
 
     private func timeString(_ date: Date?) -> String {
         guard let d = date else { return "—" }
@@ -552,14 +524,6 @@ struct ZmanimView: View {
         }
     }
 
-    private func syncSelectedOpinionsWithProfile() {
-        if halachicProfile == .custom {
-            applyCustomMap()
-        } else {
-            selectedOpinions = [:]
-        }
-    }
-
     private func applyCustomMap() {
         let map = loadCustomOpinionIDs()
         var dict: [String: ZmanOpinion] = [:]
@@ -570,13 +534,6 @@ struct ZmanimView: View {
             }
         }
         selectedOpinions = dict
-    }
-
-    private func resetCustomProfileToSephardiDefaults() {
-        guard halachicProfile == .custom else { return }
-        customOpinionMapRaw = ""
-        selectedOpinions = [:]
-        lightHaptic()
     }
 
     private func loadCustomOpinionIDs() -> [String: String] {
@@ -596,11 +553,10 @@ struct ZmanimView: View {
 
     private func pickOpinion(_ item: ZmanItem, _ opinion: ZmanOpinion) {
         selectedOpinions[item.id] = opinion
-        if halachicProfile == .custom {
-            var map = loadCustomOpinionIDs()
-            map[item.id] = opinion.id
-            saveCustomOpinionIDs(map)
-        }
+        // Всегда сохраняем выбор пользователя, так как профиль один (общий)
+        var map = loadCustomOpinionIDs()
+        map[item.id] = opinion.id
+        saveCustomOpinionIDs(map)
         lightHaptic()
         activeZmanItem = nil
     }
@@ -608,6 +564,125 @@ struct ZmanimView: View {
     private func lightHaptic() {
         let generator = UIImpactFeedbackGenerator(style: .light)
         generator.impactOccurred()
+    }
+    
+    private func copyDebugData() {
+        var output = "DEBUG ZMANIM REPORT\n"
+        output += "Date: \(gregorianText)\n"
+        output += "Location: \(cityName) (Elv: \(geoLocation.elevation)m)\n\n"
+        
+        for item in currentZmanim {
+            output += "[\(item.title)]\n"
+            for opinion in item.opinions {
+                output += "- \(opinion.title): \(opinion.time)\n"
+            }
+            output += "\n"
+        }
+        
+        UIPasteboard.general.string = output
+        showCopyAlert = true
+        lightHaptic()
+    }
+}
+
+// MARK: - Settings Sheet
+
+struct SettingsSheet: View {
+    @Binding var candleOffset: Int
+    @Binding var useManualElev: Bool
+    @Binding var manualElev: Double
+    @Binding var customOpinionMapRaw: String
+    @Binding var selectedOpinions: [String: ZmanOpinion]
+    let currentAutoElev: Double
+    
+    @Environment(\.dismiss) var dismiss
+    
+    @State private var showResetConfirmation = false
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("הדלקת נרות")) {
+                    Picker("זמן לפני השקיעה", selection: $candleOffset) {
+                        Text("18 דקות").tag(18)
+                        Text("24 דקות").tag(24)
+                        Text("30 דקות").tag(30)
+                        Text("40 דקות").tag(40)
+                    }
+                }
+                
+                Section(header: Text("גובה טופוגרפי (מטרים)")) {
+                    Toggle("הגדרת גובה ידנית", isOn: $useManualElev)
+                    
+                    if useManualElev {
+                        HStack {
+                            Text("גובה במטרים:")
+                            Spacer()
+                            TextField("0", value: $manualElev, format: .number)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 100)
+                        }
+                    } else {
+                        HStack {
+                            Text("גובה אוטומטי (GPS):")
+                            Spacer()
+                            Text("\(Int(currentAutoElev)) מ׳")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                
+                Section(footer: Text("שינוי הגובה משפיע על זמני הזריחה והשקיעה הנראים.")) {
+                    EmptyView()
+                }
+                
+                // Кнопка сброса настроек
+                Section {
+                    Button(role: .destructive) {
+                        showResetConfirmation = true
+                    } label: {
+                        HStack {
+                            Spacer()
+                            Text("אפס להגדרות ברירת מחדל")
+                            Spacer()
+                        }
+                    }
+                    .alert("איפוס הגדרות", isPresented: $showResetConfirmation) {
+                        Button("ביטול", role: .cancel) { }
+                        Button("אפס", role: .destructive) {
+                            resetDefaults()
+                        }
+                    } message: {
+                        Text("האם אתה בטוח שברצונך לאפס את כל בחירות הזמנים לברירת המחדל?")
+                    }
+                }
+            }
+            .navigationTitle("הגדרות")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("סיום") { dismiss() }
+                }
+            }
+        }
+        .environment(\.layoutDirection, .rightToLeft)
+    }
+    
+    private func resetDefaults() {
+        // Сброс выборов мнений
+        customOpinionMapRaw = ""
+        selectedOpinions = [:]
+        
+        // Сброс свечей на 18 (стандарт)
+        candleOffset = 18
+        
+        // Сбрасываем ручную высоту? Можно, но не обязательно. Оставим на усмотрение пользователя.
+        // useManualElev = false
+        
+        let generator = UINotificationFeedbackGenerator()
+        generator.notificationOccurred(.success)
+        dismiss()
     }
 }
 
