@@ -7,6 +7,12 @@ let israelTimeZone = TimeZone(identifier: "Asia/Jerusalem") ?? .current
 struct JewishDayInfo {
     let hebrewDate: String      // например: י״ד אדר
     let special: String?        // например: "פורים"
+    let formattedDate: String
+    let dayOfWeek: String
+    let hebrewDateText: String
+    let isErevShabbat: Bool
+    let isErevChag: Bool
+    let isShabbat: Bool
 }
 
 /// Помощник по еврейской дате на базе системного календаря .hebrew.
@@ -48,7 +54,16 @@ final class HebrewDateHelper {
         let monthName = monthFormatter.string(from: shiftedDate)
 
         guard let month = comps.month, let day = comps.day else {
-            return JewishDayInfo(hebrewDate: monthName, special: nil)
+            return JewishDayInfo(
+                hebrewDate: monthName,
+                special: nil,
+                formattedDate: monthName,
+                dayOfWeek: "",
+                hebrewDateText: monthName,
+                isErevShabbat: false,
+                isErevChag: false,
+                isShabbat: false
+            )
         }
 
         let monthsInYear = hebrewCalendar.range(of: .month, in: .year, for: shiftedDate)?.count ?? 12
@@ -104,7 +119,73 @@ final class HebrewDateHelper {
         }
 
         let specialText = tags.isEmpty ? nil : tags.joined(separator: " · ")
-        return JewishDayInfo(hebrewDate: hebrewDateString, special: specialText)
+        let weekday = weekdayName(for: shiftedDate)
+        let formatted = [hebrewDateString, specialText].compactMap { $0 }.joined(separator: " · ")
+
+        let erevShabbat = isErevShabbat(for: shiftedDate)
+        let shabbat = isShabbat(shiftedDate)
+        let erevChag = isErevChag(for: shiftedDate)
+
+        return JewishDayInfo(
+            hebrewDate: hebrewDateString,
+            special: specialText,
+            formattedDate: formatted,
+            dayOfWeek: weekday,
+            hebrewDateText: hebrewDateString,
+            isErevShabbat: erevShabbat,
+            isErevChag: erevChag,
+            isShabbat: shabbat
+        )
+    }
+
+    private func weekdayName(for date: Date) -> String {
+        let df = DateFormatter()
+        df.locale = Locale(identifier: "he_IL")
+        df.timeZone = israelTimeZone
+        df.dateFormat = "EEEE"
+        return df.string(from: date)
+    }
+
+    private func isShabbat(_ date: Date) -> Bool {
+        let weekday = hebrewCalendar.component(.weekday, from: date)
+        return weekday == 7
+    }
+
+    private func isErevShabbat(for date: Date) -> Bool {
+        let weekday = hebrewCalendar.component(.weekday, from: date)
+        return weekday == 6
+    }
+
+    private func isErevChag(for date: Date) -> Bool {
+        guard let tomorrow = hebrewCalendar.date(byAdding: .day, value: 1, to: date) else {
+            return false
+        }
+
+        let comps = hebrewCalendar.dateComponents([.month, .day], from: tomorrow)
+        guard let month = comps.month, let day = comps.day else { return false }
+
+        let monthsInYear = hebrewCalendar.range(of: .month, in: .year, for: tomorrow)?.count ?? 12
+        let isLeapYear = monthsInYear == 13
+        return isYomTov(month: month, day: day, isLeapYear: isLeapYear)
+    }
+
+    private func isYomTov(month: Int, day: Int, isLeapYear: Bool) -> Bool {
+        _ = isLeapYear // зарезервировано для учёта диаспоры/адар ב׳
+
+        switch (month, day) {
+        case (1, 1), (1, 2): // Рош ѓаШана
+            return true
+        case (1, 10): // Йом Кипур
+            return true
+        case (1, 15), (1, 22): // Суккот, Шмини Ацерет/Симхат Тора
+            return true
+        case (8, 15), (8, 21): // 1-й и 7-й дни Песаха
+            return true
+        case (10, 6): // Шавуот
+            return true
+        default:
+            return false
+        }
     }
 
     /// Преобразование числа дня (1–30) в запись на иврите с גרש/גרשיים: י״ד, כ״א, ט׳ וכו׳

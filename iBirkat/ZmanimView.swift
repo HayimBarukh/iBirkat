@@ -5,7 +5,6 @@ import KosherSwift
 struct ZmanimView: View {
 
     @EnvironmentObject var locationManager: LocationManager
-    @Environment(\.dismiss) private var dismiss
 
     // Дата, для которой считаем зманим
     @State private var date: Date = Date()
@@ -13,6 +12,7 @@ struct ZmanimView: View {
     // Выбор мнений для конкретных зманим (в памяти экрана)
     @State private var selectedOpinions: [String: ZmanOpinion] = [:]
     @State private var activeZmanItem: ZmanItem?
+    @State private var popoverArrowEdge: Edge = .top
     @State private var showingCandleOffsetDialog = false
 
     // Профиль по общине
@@ -88,12 +88,14 @@ struct ZmanimView: View {
         geoLocation.locationName ?? "מקום נוכחי"
     }
 
+    private var isPhone: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone
+    }
+
     // MARK: - Body
 
     var body: some View {
-        GeometryReader { proxy in
-            let bottomInset = proxy.safeAreaInsets.bottom
-
+        GeometryReader { _ in
             ZStack(alignment: .topLeading) {
                 Color(.systemBackground)
                     .ignoresSafeArea()
@@ -123,162 +125,189 @@ struct ZmanimView: View {
                     syncSelectedOpinionsWithProfile()
                 }
                 .onChange(of: date) { _ in
-                    if halachicProfile == .custom {
-                        applyCustomMap()
-                    } else {
-                        selectedOpinions = [:]
-                    }
+                    syncSelectedOpinionsWithProfile()
                 }
-                .safeAreaInset(edge: .bottom) {
-                    VStack(spacing: 0) {
-                        separator
-                            .padding(.horizontal, 16)
-
-                        bottomNavigationRow
-                            .padding(.horizontal, 16)
-                            .padding(.top, 4)
-                            // Минимальный зазор без удвоения safe-area и без лишнего пустого места
-                            .padding(.bottom, bottomInset > 0 ? max(bottomInset - 10, 8) : 6)
-                    }
-                    .background(
-                        Color(.systemBackground)
-                            .opacity(0.98)
-                    )
+            }
+            .overlay(alignment: .center) {
+                phoneOpinionOverlay
+            }
+            .safeAreaInset(edge: .bottom) {
+                if isPhone {
+                    bottomDateSelector
                 }
             }
         }
-        .navigationBarBackButtonHidden(true)
-        .toolbar(.hidden, for: .navigationBar)
-        .overlay(alignment: .topLeading) {
-            backFloatingButton
-                .padding(.horizontal, 12)
-                .padding(.top, 4)
-        }
-    }
-
-    // MARK: - Floating back button
-
-    private var backFloatingButton: some View {
-        Button {
-            dismiss()
-        } label: {
-            Image(systemName: "chevron.backward")
-                .font(.system(size: 15, weight: .medium))
-                .padding(8)
-                .background(
-                    Circle().fill(Color.white.opacity(0.9))
-                        .shadow(color: .black.opacity(0.15),
-                                radius: 8, x: 0, y: 3)
-                )
-        }
-        .buttonStyle(.plain)
     }
 
     // MARK: - Header
 
     private var headerArea: some View {
-        VStack(spacing: 4) {
-            Text("זמני היום · \(cityName)")
-                .font(.headline)
+        VStack(alignment: .trailing, spacing: 12) {
+            HStack(alignment: .top) {
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text(cityName)
+                        .font(.title2.weight(.semibold))
+                        .multilineTextAlignment(.trailing)
 
-            Text(hebrewInfo.hebrewDate)
-                .font(.subheadline)
+                    Text(gregorianText)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.trailing)
 
-            Text(gregorianText)
-                .font(.footnote)
-                .foregroundColor(.secondary)
+                    Text(hebrewInfo.formattedDate)
+                        .font(.headline)
+                }
 
-            HStack(spacing: 8) {
-                profileChip(.custom)
-                profileChip(.sephardi)
-                profileChip(.ashkenazi)
-                profileChip(.chabad)
+                Spacer(minLength: 10)
+
+               VStack(alignment: .trailing, spacing: 10) {
+                    profilePicker
+                    if !isPhone {
+                        dateSelector
+                    }
+                }
             }
-            .padding(.top, 6)
-            .padding(.bottom, 4)
+
+            separator
         }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
     }
-
-    /// Кнопка профиля (ע״מ / א / ח / מותאם)
-    private func profileChip(_ profile: HalachicProfile) -> some View {
-        let isSelected = (profile == halachicProfile)
-
-        let shortLabel: String
-        let fullLabel: String
-        let showStar: Bool
-
-        switch profile {
-        case .sephardi:
-            shortLabel = "ע״מ"
-            fullLabel  = "עדות המזרח / ר׳ עובדיה"
-            showStar   = false
-        case .ashkenazi:
-            shortLabel = "א"
-            fullLabel  = "אשכנז"
-            showStar   = false
-        case .chabad:
-            shortLabel = "ח"
-            fullLabel  = "חב״ד"
-            showStar   = false
-        case .custom:
-            shortLabel = "מותאם"
-            fullLabel  = "מותאם אישית"
-            showStar   = true
-        }
-
-        let label = HStack(spacing: 4) {
-            Text(isSelected ? fullLabel : shortLabel)
-                .font(.footnote.weight(isSelected ? .semibold : .regular))
-            if showStar {
-                Image(systemName: "star.fill")
-                    .font(.system(size: 11))
-            }
-        }
-        .lineLimit(1)
-        .padding(.horizontal, isSelected ? 14 : 12)
-        .padding(.vertical, 6)
-        .background(
-            Capsule()
-                .fill(isSelected ? Color.blue.opacity(0.18)
-                                 : Color.gray.opacity(0.12))
-        )
-        .foregroundColor(isSelected ? .blue : .primary)
-
-        return Button {
-            // обычный тап — просто выбрать профиль
-            halachicProfileRaw = profile.rawValue
-            lightHaptic()
-        } label: {
-            label
-        }
-        .buttonStyle(.plain)
-        // ДЛИННОЕ НАЖАТИЕ НА КАСТОМ — СБРОС К СЕФАРАДИМ
-        .simultaneousGesture(
-            LongPressGesture(minimumDuration: 0.7).onEnded { _ in
-                guard profile == .custom else { return }
-                resetCustomProfileToSephardiDefaults()
-            }
-        )
-    }
-
-    // MARK: - Separator
 
     private var separator: some View {
         Rectangle()
-            .fill(Color.gray.opacity(0.16))
-            .frame(height: 1)
+            .fill(Color.secondary.opacity(0.2))
+            .frame(height: 1 / UIScreen.main.scale)
     }
 
-    // MARK: - List
+    // MARK: - Profile picker
+
+    private var profilePicker: some View {
+        VStack(alignment: .trailing, spacing: 8) {
+            Picker("", selection: $halachicProfileRaw) {
+                ForEach(HalachicProfile.basicCases, id: \.rawValue) { profile in
+                    profileLabel(for: profile)
+                        .tag(profile.rawValue)
+                        .accessibilityLabel(Text(profile.title))
+                }
+
+                profileLabel(for: .custom)
+                    .tag(HalachicProfile.custom.rawValue)
+                    .accessibilityLabel(Text(HalachicProfile.custom.title))
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    @ViewBuilder
+    private func profileLabel(for profile: HalachicProfile) -> some View {
+        let text = isPhone ? profile.shortSymbol : profile.tabletLabel
+
+        if profile == .custom {
+            Text(text)
+                .onLongPressGesture(minimumDuration: 1.0) {
+                    resetCustomProfileToSephardiDefaults()
+                }
+        } else {
+            Text(text)
+        }
+    }
+
+    // MARK: - Date selector
+
+    private var dateSelector: some View {
+        HStack(spacing: 12) {
+            Button {
+                shiftDate(by: -1)
+            } label: {
+                Image(systemName: "chevron.backward")
+                    .font(.system(size: 18, weight: .semibold))
+            }
+
+            VStack(spacing: 4) {
+                Text(hebrewInfo.dayOfWeek)
+                    .font(.headline)
+                Text(hebrewInfo.hebrewDateText)
+                    .font(.subheadline)
+            }
+            .frame(width: 160)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                resetDateToToday()
+            }
+
+            Button {
+                shiftDate(by: 1)
+            } label: {
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 18, weight: .semibold))
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var compactDateSelector: some View {
+        HStack(spacing: 8) {
+            Button {
+                shiftDate(by: -1)
+            } label: {
+                Image(systemName: "chevron.backward")
+                    .font(.system(size: 15, weight: .semibold))
+            }
+
+            VStack(spacing: 1) {
+                Text(hebrewInfo.dayOfWeek)
+                    .font(.footnote.weight(.semibold))
+                Text(hebrewInfo.hebrewDateText)
+                    .font(.caption2)
+            }
+            .frame(width: 140)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                resetDateToToday()
+            }
+
+            Button {
+                shiftDate(by: 1)
+            } label: {
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 15, weight: .semibold))
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var bottomDateSelector: some View {
+        compactDateSelector
+            .padding(.horizontal, 14)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity)
+            .background(.ultraThinMaterial)
+            .ignoresSafeArea(edges: .bottom)
+            .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: -2)
+    }
+
+    // MARK: - Zmanim list
 
     private var zmanimList: some View {
-        ScrollView {
-            LazyVStack(spacing: 6) {
-                ForEach(currentZmanim) { item in
-                    if item.opinions.count <= 1 {
-                        nonInteractiveCard(for: item)
-                    } else {
-                        interactiveZmanButton(for: item)
+        ScrollViewReader { proxy in
+            ScrollView(.vertical) {
+                VStack(spacing: 12) {
+                    Color.clear
+                        .frame(height: 0.01)
+                        .id("top")
+
+                    specialBannerIfNeeded
+                        .padding(.top, 6)
+
+                    LazyVStack(spacing: 6) {
+                        ForEach(currentZmanim) { item in
+                            if item.opinions.count <= 1 {
+                                nonInteractiveCard(for: item)
+                            } else {
+                                interactiveZmanButton(for: item)
+                            }
+                        }
                     }
                 }
             }
@@ -447,6 +476,32 @@ struct ZmanimView: View {
         return timeFormatter.string(from: d)
     }
 
+    @ViewBuilder
+    private var phoneOpinionOverlay: some View {
+        if isPhone, let item = activeZmanItem {
+            ZStack {
+                Color.black.opacity(0.35)
+                    .ignoresSafeArea()
+                    .onTapGesture {
+                        activeZmanItem = nil
+                    }
+
+                opinionPicker(for: item)
+                    .frame(maxWidth: 280)
+                    .padding(14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color(.systemBackground))
+                    )
+                    .shadow(color: Color.black.opacity(0.2), radius: 18, x: 0, y: 8)
+                    .environment(\.layoutDirection, .rightToLeft)
+            }
+            .transition(.opacity)
+            .animation(.easeInOut(duration: 0.2), value: activeZmanItem?.id)
+        }
+    }
+
+    @ViewBuilder
     private func interactiveZmanButton(for item: ZmanItem) -> some View {
         let isPopoverShown = Binding<Bool>(
             get: { activeZmanItem?.id == item.id },
@@ -457,182 +512,231 @@ struct ZmanimView: View {
             }
         )
 
-        return Button {
+        let button = Button {
             activeZmanItem = item
         } label: {
             interactiveCard(for: item)
         }
         .buttonStyle(.plain)
-        .zmanPopover(isPresented: isPopoverShown) {
-            opinionPicker(for: item)
+
+        if isPhone {
+            button
+        } else {
+            button
+                .zmanPopover(isPresented: isPopoverShown, arrowEdge: popoverArrowEdge) {
+                    opinionPicker(for: item)
+                }
+                .background(
+                    GeometryReader { geo in
+                        Color.clear
+                            .onChange(of: activeZmanItem?.id == item.id) { isActive in
+                                guard isActive else { return }
+
+                                let frame = geo.frame(in: .global)
+                                let screenHeight = UIScreen.main.bounds.height
+                                let spaceAbove = frame.minY
+                                let spaceBelow = screenHeight - frame.maxY
+
+                                popoverArrowEdge = spaceBelow < spaceAbove ? .bottom : .top
+                            }
+                    }
+                )
         }
     }
 
     private func opinionPicker(for item: ZmanItem) -> some View {
         let selectedOpinion = selectedOpinions[item.id] ?? item.defaultOpinion
+        let maxHeight = UIScreen.main.bounds.height * 0.38
 
-        return VStack(alignment: .trailing, spacing: 12) {
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("בחר דעה עבור הזמן")
-                    .font(.headline)
-                Text(item.title)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+        return ScrollView {
+            VStack(alignment: .trailing, spacing: 12) {
+                VStack(alignment: .trailing, spacing: 4) {
+                    Text("בחר דעה עבור הזמן")
+                        .font(.headline)
+                    Text(item.title)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.trailing)
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
 
-            ForEach(item.opinions) { opinion in
-                Button {
-                    pickOpinion(item, opinion)
-                } label: {
-                    HStack(spacing: 12) {
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Text(opinion.title)
-                                .font(.body.weight(.semibold))
-                                .multilineTextAlignment(.trailing)
+                ForEach(item.opinions) { opinion in
+                    Button {
+                        pickOpinion(item, opinion)
+                    } label: {
+                        HStack(spacing: 12) {
+                            VStack(alignment: .trailing, spacing: 4) {
+                                Text(opinion.title)
+                                    .font(.body.weight(.semibold))
+                                    .multilineTextAlignment(.trailing)
+                                    .fixedSize(horizontal: false, vertical: true)
 
-                            Text(opinion.time)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                Text(opinion.time)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+
+                            Image(systemName: selectedOpinion.id == opinion.id ? "checkmark.circle.fill" : "circle")
+                                .foregroundStyle(selectedOpinion.id == opinion.id ? Color.accentColor : Color.secondary)
+                                .imageScale(.large)
                         }
                         .frame(maxWidth: .infinity, alignment: .trailing)
-
-                        Image(systemName: selectedOpinion.id == opinion.id ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(selectedOpinion.id == opinion.id ? Color.accentColor : Color.secondary)
+                        .padding(.vertical, 10)
+                        .padding(.horizontal, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                .fill(Color.primary.opacity(selectedOpinion.id == opinion.id ? 0.08 : 0.03))
+                        )
                     }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(selectedOpinion.id == opinion.id ? Color.accentColor.opacity(0.12) : Color.gray.opacity(0.08))
-                    )
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
-            }
 
-            Button {
-                activeZmanItem = nil
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "xmark")
+                Button(role: .cancel) {
+                    activeZmanItem = nil
+                } label: {
                     Text("ביטול")
-                        .font(.body.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .buttonStyle(.borderedProminent)
             }
-            .foregroundColor(.secondary)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.gray.opacity(0.08))
-            )
-            .buttonStyle(.plain)
+            .padding(16)
         }
-        .padding(16)
-    }
-
-    private func nonInteractiveCard(for item: ZmanItem) -> some View {
-        let opinion = item.opinions.first!
-
-        return HStack(alignment: .center, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
-                    .font(.subheadline.weight(.semibold))
-
-                if let subtitle = item.subtitle {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-
-            Spacer()
-
-            Text(opinion.time)
-                .font(.title3.weight(.semibold))
-                .monospacedDigit()
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.gray.opacity(0.08))
-        )
+        .frame(maxHeight: maxHeight)
+        .scrollIndicators(.hidden)
     }
 
     private func interactiveCard(for item: ZmanItem) -> some View {
         let selected = selectedOpinions[item.id] ?? item.defaultOpinion
 
-        return HStack(alignment: .center, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
+        return HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(item.title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.headline)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 if let subtitle = item.subtitle {
                     Text(subtitle)
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Spacer(minLength: 12)
+
+            VStack(alignment: .trailing, spacing: 4) {
+                Text(selected.time)
+                    .font(.title2.weight(.semibold))
+                    .monospacedDigit()
 
                 Text(selected.title)
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    .multilineTextAlignment(.leading)
                     .lineLimit(2)
+                    .minimumScaleFactor(0.8)
             }
-
-            Spacer()
-
-            Text(selected.time)
-                .font(.title3.weight(.semibold))
-                .monospacedDigit()
+            .frame(width: 150, alignment: .trailing)
         }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.gray.opacity(0.08))
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemBackground))
         )
     }
 
-    // MARK: - Bottom navigation
+    private func nonInteractiveCard(for item: ZmanItem) -> some View {
+        let opinion = item.opinions.first ?? item.defaultOpinion
 
-    private var bottomNavigationRow: some View {
-        HStack(spacing: 16) {
-            Button {
-                shiftDate(by: -1)
-            } label: {
-                Image(systemName: "chevron.backward")
-                    .padding(8)
-                    .background(Circle().fill(Color.gray.opacity(0.12)))
+        return HStack(alignment: .center, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(item.title)
+                    .font(.headline)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                if let subtitle = item.subtitle {
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button("היום") {
-                date = Date()
-                lightHaptic()
+            Spacer(minLength: 12)
+
+            VStack(alignment: .trailing, spacing: 4) {
+                Text(opinion.time)
+                    .font(.title2.weight(.semibold))
+                    .monospacedDigit()
+
+                Text(opinion.title)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.8)
             }
-            .font(.subheadline.weight(.semibold))
-            .padding(.horizontal, 20)
-            .padding(.vertical, 6)
-            .background(Capsule().fill(Color.gray.opacity(0.12)))
-            .buttonStyle(.plain)
+            .frame(width: 150, alignment: .trailing)
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemBackground))
+        )
+    }
 
-            Button {
-                shiftDate(by: 1)
-            } label: {
-                Image(systemName: "chevron.forward")
-                    .padding(8)
-                    .background(Circle().fill(Color.gray.opacity(0.12)))
+    private var specialBannerIfNeeded: some View {
+        Group {
+            if hebrewInfo.isErevShabbat {
+                specialBanner(text: "שבת שלום!", icon: "sparkles")
+            } else if hebrewInfo.isErevChag {
+                specialBanner(text: "חג שמח!", icon: "sparkles")
+            } else if hebrewInfo.isShabbat {
+                specialBanner(text: "שבת היום", icon: "sun.max.fill")
+            } else {
+                EmptyView()
             }
         }
-        .buttonStyle(.plain)
     }
+
+    private func specialBanner(text: String, icon: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: icon)
+                .foregroundColor(.yellow)
+            Text(text)
+                .font(.headline)
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 14)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.yellow.opacity(0.15))
+        )
+    }
+
+    // MARK: - Date helpers
 
     private func shiftDate(by days: Int) {
         if let newDate = Calendar.current.date(byAdding: .day, value: days, to: date) {
             date = newDate
             lightHaptic()
         }
+    }
+
+    private func resetDateToToday() {
+        date = Date()
+        lightHaptic()
     }
 
     // MARK: - Кастомный профиль / сохранение мнений
@@ -704,27 +808,40 @@ struct ZmanimView: View {
     }
 }
 
+private struct ZmanPopoverModifier<PopoverContent: View>: ViewModifier {
+    let isPresented: Binding<Bool>
+    let arrowEdge: Edge
+    let popoverContent: () -> PopoverContent
+
+    @ViewBuilder
+    func body(content trigger: Content) -> some View {
+        trigger.popover(
+            isPresented: isPresented,
+            attachmentAnchor: .rect(.bounds),
+            arrowEdge: arrowEdge,
+            content: popoverContent
+        )
+        .modifier(PresentationPopoverFallback())
+    }
+}
+
+private struct PresentationPopoverFallback: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 17.0, *) {
+            content.presentationCompactAdaptation(.popover)
+        } else {
+            content
+        }
+    }
+}
+
 private extension View {
     @ViewBuilder
     func zmanPopover<Content: View>(
         isPresented: Binding<Bool>,
+        arrowEdge: Edge = .top,
         @ViewBuilder content: @escaping () -> Content
     ) -> some View {
-        if #available(iOS 17.0, *) {
-            popover(
-                isPresented: isPresented,
-                attachmentAnchor: .rect(.bounds),
-                arrowEdge: .top,
-                content: content
-            )
-            .presentationCompactAdaptation(.popover)
-        } else {
-            popover(
-                isPresented: isPresented,
-                attachmentAnchor: .rect(.bounds),
-                arrowEdge: .top,
-                content: content
-            )
-        }
+        modifier(ZmanPopoverModifier(isPresented: isPresented, arrowEdge: arrowEdge, popoverContent: content))
     }
 }

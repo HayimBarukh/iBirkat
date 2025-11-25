@@ -81,7 +81,7 @@ let halachicZmanDefinitions: [ZmanDefinition] = [
     // MARK: - בוקר: קריאת שמע / תפילה
 
     ZmanDefinition(
-        name: "סוף זמן קריאת שמע (מגן אברהם)",
+        name: "סו\"ז ק\"ש (מג\"א)",
         category: "בוקר",
         opinions: [
             ZmanOpinionDefinition(
@@ -100,7 +100,7 @@ let halachicZmanDefinitions: [ZmanDefinition] = [
     ),
 
     ZmanDefinition(
-        name: "סוף זמן קריאת שמע (גר\"א ובעל התניא)",
+        name: "סו\"ז ק\"ש (גר\"א והבע\"ט)",
         category: "בוקר",
         opinions: [
             ZmanOpinionDefinition(
@@ -111,7 +111,7 @@ let halachicZmanDefinitions: [ZmanDefinition] = [
     ),
 
     ZmanDefinition(
-        name: "סוף זמן תפילה (מגן אברהם)",
+        name: "סו\"ז תפילה (מג\"א)",
         category: "בוקר",
         opinions: [
             ZmanOpinionDefinition(
@@ -130,7 +130,7 @@ let halachicZmanDefinitions: [ZmanDefinition] = [
     ),
 
     ZmanDefinition(
-        name: "סוף זמן תפילה (גר\"א ובעל התניא)",
+        name: "סו\"ז תפילה (גר\"א והבע\"ט)",
         category: "בוקר",
         opinions: [
             ZmanOpinionDefinition(

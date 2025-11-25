@@ -28,9 +28,14 @@ struct ZmanItem: Identifiable, Hashable {
          opinions: [ZmanOpinion],
          subtitle: String? = nil)
     {
-        self.id = id ?? title
+        let resolvedID = id ?? title
+        let safeOpinions = opinions.isEmpty
+            ? [ZmanOpinion(id: "\(resolvedID)-placeholder", title: "—", time: "—")]
+            : opinions
+
+        self.id = resolvedID
         self.title = title
-        self.opinions = opinions
+        self.opinions = safeOpinions
         self.subtitle = subtitle
     }
 }
@@ -44,6 +49,20 @@ enum HalachicProfile: String, CaseIterable, Identifiable {
     case custom       // מותאם אישית
 
     var id: Self { self }
+
+    /// Базовые профили без кастомного режима
+    static var basicCases: [HalachicProfile] {
+        [.sephardi, .ashkenazi, .chabad]
+    }
+
+    var tabletLabel: String {
+        switch self {
+        case .sephardi:  return "עדות המזרח"
+        case .ashkenazi: return "אשכנז"
+        case .chabad:    return "חב״ד"
+        case .custom:    return "מותאם"
+        }
+    }
 
     var shortSymbol: String {
         switch self {
@@ -60,6 +79,15 @@ enum HalachicProfile: String, CaseIterable, Identifiable {
         case .ashkenazi: return "אשכנז (ישיבתי)"
         case .chabad:    return "חב״ד"
         case .custom:    return "פרופיל מותאם אישית"
+        }
+    }
+
+    var iconName: String {
+        switch self {
+        case .sephardi:  return "menorah"
+        case .ashkenazi: return "books.vertical"
+        case .chabad:    return "staroflife"
+        case .custom:    return "slider.horizontal.3"
         }
     }
 }
@@ -333,7 +361,7 @@ final class ZmanimProvider {
         items.append(
             ZmanItem(
                 id: "sofShma-MA",
-                title: "סוף זמן קריאת שמע (מגן אברהם)",
+                title: "סו\"ז ק\"ש (מג\"א)",
                 opinions: [
                     ZmanOpinion(
                         id: "sofShma-MA-90-zmaniyot",
@@ -351,14 +379,14 @@ final class ZmanimProvider {
                         time: timeString(maSofZmanShma(.ma72Zmaniyot))
                     )
                 ],
-                subtitle: "סוף ג׳ שעות זמניות"
+                subtitle: nil
             )
         )
 
         items.append(
             ZmanItem(
                 id: "sofShma-GRA",
-                title: "סוף זמן קריאת שמע (גר״א ובעל התניא)",
+                title: "סו\"ז ק\"ש (גר״א והבע״ט)",
                 opinions: [
                     ZmanOpinion(
                         id: "sofShma-GRA-main",
@@ -373,7 +401,7 @@ final class ZmanimProvider {
         items.append(
             ZmanItem(
                 id: "sofTfila-MA",
-                title: "סוף זמן תפילה (מגן אברהם)",
+                title: "סו\"ז תפילה (מג\"א)",
                 opinions: [
                     ZmanOpinion(
                         id: "sofTfila-MA-90-zmaniyot",
@@ -391,14 +419,14 @@ final class ZmanimProvider {
                         time: timeString(maSofZmanTfila(.ma72Zmaniyot))
                     )
                 ],
-                subtitle: "סוף ד׳ שעות זמניות"
+                subtitle: nil
             )
         )
 
         items.append(
             ZmanItem(
                 id: "sofTfila-GRA",
-                title: "סוף זמן תפילה (גר״א ובעל התניא)",
+                title: "סו\"ז תפילה (גר״א והבע״ט)",
                 opinions: [
                     ZmanOpinion(
                         id: "sofTfila-GRA-main",
