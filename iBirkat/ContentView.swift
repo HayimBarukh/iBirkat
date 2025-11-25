@@ -8,10 +8,18 @@ struct ContentView: View {
     @State private var currentPageIndex: Int = 0
     @State private var selectedPrayer: Prayer = birkatHamazon
     @State private var showSettings: Bool = false
+    
+    // Управление переходом на экран зманим
+    @State private var navigateToZmanim: Bool = false
+    @State private var hasPerformedStartupNavigation: Bool = false
 
     @AppStorage("selectedNusach") private var selectedNusach: Nusach = .edotHaMizrach
     @AppStorage("startWithZimun") private var startWithZimun: Bool = false
     @AppStorage("keepScreenOn")   private var keepScreenOn: Bool = false
+    @AppStorage("startOnZmanim")  private var startOnZmanim: Bool = false
+    
+    // НОВАЯ НАСТРОЙКА: Показывать ли выбор нусаха в Зманим
+    @AppStorage("showZmanimProfiles") private var showZmanimProfiles: Bool = true
 
     @Environment(\.horizontalSizeClass) private var hSizeClass
     @Environment(\.verticalSizeClass)   private var vSizeClass
@@ -51,7 +59,6 @@ struct ContentView: View {
     // MARK: - Body
 
     var body: some View {
-        // Используем стандартный NavigationView для максимальной совместимости
         NavigationView {
             ZStack {
                 Color.white.ignoresSafeArea()
@@ -63,7 +70,6 @@ struct ContentView: View {
                         pdfName: selectedPrayer.pdfName(for: selectedNusach, isPhone: isPhone),
                         currentPageIndex: $currentPageIndex
                     )
-                    // На iPad делаем отступы более агрессивными (-12), чтобы PDF заполнял экран лучше
                     .padding(.horizontal, isCompactPhone ? -2 : -12)
                     .padding(.top, isCompactPhone ? 0 : -2)
                 }
@@ -98,6 +104,7 @@ struct ContentView: View {
                     handleShortcutIfNeeded()
                     updateIdleTimer()
                     locationManager.requestLocationUpdate()
+                    checkStartupNavigation()
                 }
             }
             .overlay {
@@ -109,6 +116,17 @@ struct ContentView: View {
         }
         .navigationViewStyle(.stack)
         .environment(\.layoutDirection, .rightToLeft)
+    }
+
+    // MARK: - Логика старта
+
+    private func checkStartupNavigation() {
+        if startOnZmanim && !hasPerformedStartupNavigation {
+            hasPerformedStartupNavigation = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                navigateToZmanim = true
+            }
+        }
     }
 
     // MARK: - Шорткаты
@@ -185,7 +203,7 @@ struct ContentView: View {
     }
 
     private var zmanimButton: some View {
-        NavigationLink {
+        NavigationLink(isActive: $navigateToZmanim) {
             ZmanimView()
                 .environmentObject(locationManager)
         } label: {
@@ -233,7 +251,7 @@ struct ContentView: View {
                                     Image(systemName: "checkmark")
                                 }
                             }
-                            .padding(.vertical, 8) // Чуть больше зона клика
+                            .padding(.vertical, 8)
                             .contentShape(Rectangle())
                         }
                     }
@@ -247,6 +265,15 @@ struct ContentView: View {
 
                 Toggle(isOn: $keepScreenOn) {
                     Text("לא לכבות מסך בזמן קריאה")
+                }
+                
+                Toggle(isOn: $startOnZmanim) {
+                    Text("פתיחה במסך זמנים")
+                }
+                
+                // НОВЫЙ ПЕРЕКЛЮЧАТЕЛЬ
+                Toggle(isOn: $showZmanimProfiles) {
+                    Text("הצג בחירת נוסח בזמנים")
                 }
 
                 Button {
@@ -276,14 +303,12 @@ struct ContentView: View {
     private var prayerHeaderAndPickers: some View {
         let info = jewishInfo
 
-        // Настраиваем шрифты в зависимости от устройства
         let dateFont: Font = isPhone ? .footnote.weight(.medium) : .body.weight(.medium)
         let nusachFont: Font = isPhone ? .footnote.weight(.semibold) : .body.weight(.semibold)
         let spacing: CGFloat = isPhone ? 4 : 8
 
         return VStack(spacing: spacing) {
 
-            // Строка даты и нусаха
             HStack(spacing: 6) {
                 Spacer()
 
@@ -304,16 +329,13 @@ struct ContentView: View {
 
             if !visibleAfterFoodPrayers.isEmpty {
                 ZStack {
-                    // Иконки по бокам
                     HStack {
                         zmanimButton
                         Spacer()
                         gearButton
                     }
-                    // Больше отступ на iPad для красоты
                     .padding(.horizontal, isPhone ? 12 : 24)
 
-                    // Пикер по центру
                     HStack {
                         Spacer()
                         Picker("", selection: $selectedPrayer) {
@@ -328,7 +350,6 @@ struct ContentView: View {
                 }
             }
 
-            // Индикатор праздника
             if let special = info.special, !special.isEmpty {
                 Text("היום: \(special)")
                     .font(isPhone ? .footnote.weight(.semibold) : .subheadline.weight(.semibold))

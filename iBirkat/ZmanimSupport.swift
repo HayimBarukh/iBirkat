@@ -124,11 +124,6 @@ final class ZmanimProvider {
         // ---------------------------------------------------------
         // ALOT HASHACHAR
         // ---------------------------------------------------------
-        //
-        // 🟠 ס״פ: 72 דקות שוות קודם הנץ
-        // 🔵 א״ש / 🟣 חב״ד: 72 דקות זמניות (≈16.1°)
-        // кастом — как ס״פ по умолчанию.
-        //
 
         // 90 минут זמניות (1.5 שעה זמנית)
         let alos90Zmaniyot = sunrise.addingTimeInterval(-1.5 * shaahZmanitGRA)
@@ -160,14 +155,12 @@ final class ZmanimProvider {
         let alosOpinions: [ZmanOpinion]
         switch profile {
         case .sephardi, .custom:
-            // базовая — 72 швот
             alosOpinions = [
                 alos72FixedOpinion,
                 alos72ZmaniyotOpinion,
                 alos90Opinion
             ]
         case .ashkenazi, .chabad:
-            // базовая — 72 זמניות
             alosOpinions = [
                 alos72ZmaniyotOpinion,
                 alos72FixedOpinion,
@@ -176,13 +169,8 @@ final class ZmanimProvider {
         }
 
         // ---------------------------------------------------------
-        // זמן ציצית ותפילין (משיכיר)
+        // זמן ציצית ותפילין
         // ---------------------------------------------------------
-        //
-        // ס״פ – ≈11° (≈48 мин)
-        // א״ש / חב״ד – ≈11.5° (≈52 мин)
-        // לחומרא – ≈10.2° (≈46 мин)
-        //
 
         let tzitzit11   = sunrise.addingTimeInterval(-48 * 60) // ≈11°
         let tzitzit11_5 = sunrise.addingTimeInterval(-52 * 60) // ≈11.5°
@@ -215,7 +203,7 @@ final class ZmanimProvider {
         }
 
         // ---------------------------------------------------------
-        // СОФ ЗМАН К״ש / ТФИЛА (Мג״א / גר״א)
+        // СОФ ЗМАН К״ש / ТФИЛА
         // ---------------------------------------------------------
 
         enum MADayVariant {
@@ -255,12 +243,12 @@ final class ZmanimProvider {
             return start.addingTimeInterval(dayLen * 4.0 / 12.0)
         }
 
-        // גר״א / בעל התניא: день от נץ до שקיעה
+        // גר״א / בעל התניא
         let sofShmaGRA  = sunrise.addingTimeInterval(3.0 * shaahZmanitGRA)
         let sofTfilaGRA = sunrise.addingTimeInterval(4.0 * shaahZmanitGRA)
 
         // ---------------------------------------------------------
-        // Минха, плаг
+        // Минха, плаг, ночь...
         // ---------------------------------------------------------
 
         let minchaGdolaGRA  = chatzot.addingTimeInterval(shaahZmanitGRA / 2.0)
@@ -271,10 +259,6 @@ final class ZmanimProvider {
 
         let plagGRA  = sunrise.addingTimeInterval(10.75 * shaahZmanitGRA)
         let plagMA72 = plagGRA
-
-        // ---------------------------------------------------------
-        // Ночь / выход звёзд
-        // ---------------------------------------------------------
 
         let nightGRA13_5 = sunset.addingTimeInterval(13.5 * 60.0)
         let nightGRA18   = sunset.addingTimeInterval(18.0 * 60.0)
@@ -330,10 +314,11 @@ final class ZmanimProvider {
             )
         )
 
+        // ИЗМЕНЕНО: "סוף זמן" -> "סו״ז"
         items.append(
             ZmanItem(
                 id: "sofShma-MA",
-                title: "סוף זמן קריאת שמע (מגן אברהם)",
+                title: "סו״ז קריאת שמע (מגן אברהם)",
                 opinions: [
                     ZmanOpinion(
                         id: "sofShma-MA-90-zmaniyot",
@@ -355,10 +340,11 @@ final class ZmanimProvider {
             )
         )
 
+        // ИЗМЕНЕНО: "סוף זמן" -> "סו״ז"
         items.append(
             ZmanItem(
                 id: "sofShma-GRA",
-                title: "סוף זמן קריאת שמע (גר״א ובעל התניא)",
+                title: "סו״ז קריאת שמע (גר״א ובעל התניא)",
                 opinions: [
                     ZmanOpinion(
                         id: "sofShma-GRA-main",
@@ -370,10 +356,11 @@ final class ZmanimProvider {
             )
         )
 
+        // ИЗМЕНЕНО: "סוף זמן" -> "סו״ז"
         items.append(
             ZmanItem(
                 id: "sofTfila-MA",
-                title: "סוף זמן תפילה (מגן אברהם)",
+                title: "סו״ז תפילה (מגן אברהם)",
                 opinions: [
                     ZmanOpinion(
                         id: "sofTfila-MA-90-zmaniyot",
@@ -395,10 +382,11 @@ final class ZmanimProvider {
             )
         )
 
+        // ИЗМЕНЕНО: "סוף זמן" -> "סו״ז"
         items.append(
             ZmanItem(
                 id: "sofTfila-GRA",
-                title: "סוף זמן תפילה (גר״א ובעל התניא)",
+                title: "סו״ז תפילה (גר״א ובעל התניא)",
                 opinions: [
                     ZmanOpinion(
                         id: "sofTfila-GRA-main",
