@@ -18,8 +18,17 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
         manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
         manager.requestWhenInUseAuthorization()
     }
+    
+    // Ручной запуск обновлений
+    func requestLocationUpdate() {
+        let status = manager.authorizationStatus
+        if status == .authorizedWhenInUse || status == .authorizedAlways {
+            manager.startUpdatingLocation()
+        } else if status == .notDetermined {
+            manager.requestWhenInUseAuthorization()
+        }
+    }
 
-    // GeoLocation для KosherSwift
     var geoLocation: GeoLocation? {
         guard let loc = currentLocation else { return nil }
         return GeoLocation(
@@ -47,6 +56,9 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let loc = locations.last else { return }
         currentLocation = loc
+        
+        // ВАЖНО: Останавливаем обновления для экономии батареи
+        manager.stopUpdatingLocation()
 
         geocoder.reverseGeocodeLocation(loc) { [weak self] placemarks, _ in
             guard let self = self else { return }
@@ -61,5 +73,6 @@ final class LocationManager: NSObject, ObservableObject, CLLocationManagerDelega
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("Location error:", error.localizedDescription)
+        manager.stopUpdatingLocation()
     }
 }

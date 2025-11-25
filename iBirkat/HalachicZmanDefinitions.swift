@@ -22,7 +22,7 @@ struct ZmanSection: Identifiable {
     let zmanim: [ZmanDefinition]
 }
 
-// ВСЕ ВРЕМЕНА И ШИТОТ — как ты дал
+// ВСЕ ВРЕМЕНА И ШИТОТ
 let halachicZmanDefinitions: [ZmanDefinition] = [
 
     // MARK: - תחילת היום
@@ -81,7 +81,7 @@ let halachicZmanDefinitions: [ZmanDefinition] = [
     // MARK: - בוקר: קריאת שמע / תפילה
 
     ZmanDefinition(
-        name: "סוף זמן קריאת שמע (מגן אברהם)",
+        name: "סו״ז קריאת שמע (מגן אברהם)",
         category: "בוקר",
         opinions: [
             ZmanOpinionDefinition(
@@ -100,7 +100,7 @@ let halachicZmanDefinitions: [ZmanDefinition] = [
     ),
 
     ZmanDefinition(
-        name: "סוף זמן קריאת שמע (גר\"א ובעל התניא)",
+        name: "סו״ז קריאת שמע (גר\"א ובעל התניא)",
         category: "בוקר",
         opinions: [
             ZmanOpinionDefinition(
@@ -111,7 +111,7 @@ let halachicZmanDefinitions: [ZmanDefinition] = [
     ),
 
     ZmanDefinition(
-        name: "סוף זמן תפילה (מגן אברהם)",
+        name: "סו״ז תפילה (מגן אברהם)",
         category: "בוקר",
         opinions: [
             ZmanOpinionDefinition(
@@ -130,7 +130,7 @@ let halachicZmanDefinitions: [ZmanDefinition] = [
     ),
 
     ZmanDefinition(
-        name: "סוף זמן תפילה (גר\"א ובעל התניא)",
+        name: "סו״ז תפילה (גר\"א ובעל התניא)",
         category: "בוקר",
         opinions: [
             ZmanOpinionDefinition(
@@ -320,7 +320,6 @@ let halachicZmanDefinitions: [ZmanDefinition] = [
     )
 ]
 
-// Секции по порядку категорий
 let halachicZmanSections: [ZmanSection] = {
     let order: [String] = [
         "תחילת היום",

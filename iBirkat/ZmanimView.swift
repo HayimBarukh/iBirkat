@@ -27,6 +27,10 @@ struct ZmanimView: View {
     @AppStorage("customOpinionMap")
     private var customOpinionMapRaw: String = ""
 
+    private var isPhone: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone
+    }
+
     // Текущий профиль как enum
     private var halachicProfile: HalachicProfile {
         HalachicProfile(rawValue: halachicProfileRaw) ?? .sephardi
@@ -46,22 +50,18 @@ struct ZmanimView: View {
         )
     }
 
-    // Провайдер зманим
     private var provider: ZmanimProvider {
         ZmanimProvider(geoLocation: geoLocation)
     }
 
-    // Список зманим для текущей даты и профиля
     private var currentZmanim: [ZmanItem] {
         provider.zmanim(for: date, profile: halachicProfile)
     }
 
-    // Еврейская дата (с учётом смены дня вечером)
     private var hebrewInfo: JewishDayInfo {
         HebrewDateHelper.shared.info(for: date)
     }
 
-    // Форматтер времени
     private var timeFormatter: DateFormatter {
         let df = DateFormatter()
         df.locale = Locale(identifier: "he_IL")
@@ -70,7 +70,6 @@ struct ZmanimView: View {
         return df
     }
 
-    // Форматтер григорианской даты (на иврите)
     private var gregorianFormatter: DateFormatter {
         let df = DateFormatter()
         df.locale = Locale(identifier: "he_IL")
@@ -95,24 +94,28 @@ struct ZmanimView: View {
             let bottomInset = proxy.safeAreaInsets.bottom
 
             ZStack(alignment: .topLeading) {
-                Color(.systemBackground)
+                Color(.systemGroupedBackground) // Чуть серый фон для контраста карточек
                     .ignoresSafeArea()
 
                 VStack(spacing: 0) {
                     headerArea
+                        .background(Color(.systemBackground))
+                        .padding(.bottom, 10)
 
-                    if let special = specialTimesInfo {
-                        specialTimesArea(special)
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 10)
+                    ScrollView {
+                        VStack(spacing: 0) {
+                            if let special = specialTimesInfo {
+                                specialTimesArea(special)
+                                    .padding(.horizontal, 16)
+                                    .padding(.bottom, 12)
+                            }
+
+                            zmanimList
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 100) // Отступ под нижнюю панель
+                        }
+                        .padding(.top, 4)
                     }
-
-                    separator
-                        .padding(.horizontal, 16)
-
-                    zmanimList
-                        .padding(.horizontal, 16)
-                        .padding(.bottom, 8)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .environment(\.layoutDirection, .rightToLeft)
@@ -129,22 +132,19 @@ struct ZmanimView: View {
                         selectedOpinions = [:]
                     }
                 }
-                .safeAreaInset(edge: .bottom) {
+                
+                // Нижняя панель навигации
+                VStack {
+                    Spacer()
                     VStack(spacing: 0) {
-                        separator
-                            .padding(.horizontal, 16)
-
+                        Divider()
                         bottomNavigationRow
-                            .padding(.horizontal, 16)
-                            .padding(.top, 4)
-                            // Минимальный зазор без удвоения safe-area и без лишнего пустого места
-                            .padding(.bottom, bottomInset > 0 ? max(bottomInset - 10, 8) : 6)
+                            .padding(.top, 8)
+                            .padding(.bottom, bottomInset > 0 ? bottomInset : 12)
                     }
-                    .background(
-                        Color(.systemBackground)
-                            .opacity(0.98)
-                    )
+                    .background(Material.bar) // Полупрозрачный фон
                 }
+                .ignoresSafeArea(.container, edges: .bottom)
             }
         }
         .navigationBarBackButtonHidden(true)
@@ -163,12 +163,11 @@ struct ZmanimView: View {
             dismiss()
         } label: {
             Image(systemName: "chevron.backward")
-                .font(.system(size: 15, weight: .medium))
-                .padding(8)
+                .font(.system(size: 16, weight: .semibold))
+                .padding(10)
                 .background(
-                    Circle().fill(Color.white.opacity(0.9))
-                        .shadow(color: .black.opacity(0.15),
-                                radius: 8, x: 0, y: 3)
+                    Circle().fill(Color(.systemBackground).opacity(0.9))
+                        .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
                 )
         }
         .buttonStyle(.plain)
@@ -177,16 +176,19 @@ struct ZmanimView: View {
     // MARK: - Header
 
     private var headerArea: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 6) {
             Text("זמני היום · \(cityName)")
-                .font(.headline)
+                .font(isPhone ? .headline : .title3)
+                .padding(.top, 10)
 
-            Text(hebrewInfo.hebrewDate)
-                .font(.subheadline)
-
-            Text(gregorianText)
-                .font(.footnote)
-                .foregroundColor(.secondary)
+            VStack(spacing: 2) {
+                Text(hebrewInfo.hebrewDate)
+                    .font(isPhone ? .subheadline.weight(.medium) : .headline)
+                
+                Text(gregorianText)
+                    .font(isPhone ? .footnote : .subheadline)
+                    .foregroundColor(.secondary)
+            }
 
             HStack(spacing: 8) {
                 profileChip(.custom)
@@ -194,9 +196,12 @@ struct ZmanimView: View {
                 profileChip(.ashkenazi)
                 profileChip(.chabad)
             }
-            .padding(.top, 6)
-            .padding(.bottom, 4)
+            .padding(.top, 8)
+            .padding(.bottom, 8)
         }
+        .frame(maxWidth: .infinity)
+        .background(Color(.systemBackground))
+        .shadow(color: Color.black.opacity(0.03), radius: 3, x: 0, y: 3)
     }
 
     /// Кнопка профиля (ע״מ / א / ח / מותאם)
@@ -210,7 +215,7 @@ struct ZmanimView: View {
         switch profile {
         case .sephardi:
             shortLabel = "ע״מ"
-            fullLabel  = "עדות המזרח / ר׳ עובדיה"
+            fullLabel  = "עדות המזרח"
             showStar   = false
         case .ashkenazi:
             shortLabel = "א"
@@ -231,28 +236,25 @@ struct ZmanimView: View {
                 .font(.footnote.weight(isSelected ? .semibold : .regular))
             if showStar {
                 Image(systemName: "star.fill")
-                    .font(.system(size: 11))
+                    .font(.system(size: 10))
             }
         }
         .lineLimit(1)
         .padding(.horizontal, isSelected ? 14 : 12)
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
         .background(
             Capsule()
-                .fill(isSelected ? Color.blue.opacity(0.18)
-                                 : Color.gray.opacity(0.12))
+                .fill(isSelected ? Color.blue.opacity(0.15) : Color(.secondarySystemFill))
         )
         .foregroundColor(isSelected ? .blue : .primary)
 
         return Button {
-            // обычный тап — просто выбрать профиль
             halachicProfileRaw = profile.rawValue
             lightHaptic()
         } label: {
             label
         }
         .buttonStyle(.plain)
-        // ДЛИННОЕ НАЖАТИЕ НА КАСТОМ — СБРОС К СЕФАРАДИМ
         .simultaneousGesture(
             LongPressGesture(minimumDuration: 0.7).onEnded { _ in
                 guard profile == .custom else { return }
@@ -261,25 +263,15 @@ struct ZmanimView: View {
         )
     }
 
-    // MARK: - Separator
-
-    private var separator: some View {
-        Rectangle()
-            .fill(Color.gray.opacity(0.16))
-            .frame(height: 1)
-    }
-
     // MARK: - List
 
     private var zmanimList: some View {
-        ScrollView {
-            LazyVStack(spacing: 6) {
-                ForEach(currentZmanim) { item in
-                    if item.opinions.count <= 1 {
-                        nonInteractiveCard(for: item)
-                    } else {
-                        interactiveZmanButton(for: item)
-                    }
+        LazyVStack(spacing: 8) {
+            ForEach(currentZmanim) { item in
+                if item.opinions.count <= 1 {
+                    nonInteractiveCard(for: item)
+                } else {
+                    interactiveZmanButton(for: item)
                 }
             }
         }
@@ -291,7 +283,6 @@ struct ZmanimView: View {
         enum Kind {
             case shabbat
             case yomTov
-
             var title: String {
                 switch self {
                 case .shabbat: return "ערב שבת"
@@ -299,7 +290,6 @@ struct ZmanimView: View {
                 }
             }
         }
-
         let kind: Kind
         let candleLighting: String
         let endTime: String
@@ -307,20 +297,12 @@ struct ZmanimView: View {
 
     private var specialTimesInfo: SpecialTimesInfo? {
         guard let kind = specialDayKind else { return nil }
-
-        let lighting = provider.candleLighting(
-            for: date,
-            minutesBeforeSunset: candleLightingOffset
-        )
-
-        // Выход праздника/Шаббата считаем по следующему календарному дню
+        let lighting = provider.candleLighting(for: date, minutesBeforeSunset: candleLightingOffset)
+        
         var motzaeiCalendar = Calendar.current
         motzaeiCalendar.timeZone = geoLocation.timeZone
         let motzaeiDate = motzaeiCalendar.date(byAdding: .day, value: 1, to: date)
-        let motzaei = provider.motzaeiShabbatOrYomTov(
-            for: motzaeiDate ?? date,
-            offsetMinutes: 40
-        )
+        let motzaei = provider.motzaeiShabbatOrYomTov(for: motzaeiDate ?? date, offsetMinutes: 40)
 
         return SpecialTimesInfo(
             kind: kind,
@@ -329,62 +311,39 @@ struct ZmanimView: View {
         )
     }
 
-    /// Определение, является ли дата вечером Шаббата или праздника (Э״י)
     private var specialDayKind: SpecialTimesInfo.Kind? {
-        // Пятница — всегда ערב שבת
         var gregorian = Calendar.current
         gregorian.timeZone = geoLocation.timeZone
         let weekday = gregorian.component(.weekday, from: date)
-        if weekday == 6 { return .shabbat }
+        if weekday == 6 { return .shabbat } // Пятница
 
-        // Проверяем, не вечер ли Йом Тов
+        // Проверка на Йом Тов (упрощенная)
         var hebCal = Calendar(identifier: .hebrew)
         hebCal.timeZone = geoLocation.timeZone
-
-        guard
-            let tomorrow = hebCal.date(byAdding: .day, value: 1, to: date)
-        else { return nil }
-
+        guard let tomorrow = hebCal.date(byAdding: .day, value: 1, to: date) else { return nil }
         let comps = hebCal.dateComponents([.month, .day], from: tomorrow)
-        guard let month = comps.month, let day = comps.day else {
-            return nil
-        }
-
-        let leap = (hebCal.range(of: .month, in: .year, for: tomorrow)?.count ?? 12) == 13
-        if isYomTov(month: month, day: day, isLeapYear: leap) {
-            return .yomTov
-        }
+        guard let month = comps.month, let day = comps.day else { return nil }
+        
+        // Рош ѓаШана, Йом Кипур, Суккот, Песах, Шавуот
+        let isLeap = (hebCal.range(of: .month, in: .year, for: tomorrow)?.count ?? 12) == 13
+        if isYomTov(month: month, day: day, isLeapYear: isLeap) { return .yomTov }
 
         return nil
     }
-
-    /// Список праздничных дней в Э״י (для определения «эрев חג»)
+    
     private func isYomTov(month: Int, day: Int, isLeapYear: Bool) -> Bool {
-        _ = isLeapYear // параметр оставлен для будущего учёта диаспоры/לוח שנה
-
-        // Нумерация месяцев календаря .hebrew: תשרי=1 … אלול=13
         switch (month, day) {
-        case (1, 1), (1, 2): // Рош ѓаШана
-            return true
-        case (1, 10): // Йом Кипур
-            return true
-        case (1, 15), (1, 22): // Суккот, Шмини Ацерет/Симхат Тора
-            return true
-        case (8, 15), (8, 21): // 1-й и 7-й дни Песаха
-            return true
-        case (10, 6): // Шавуот
-            return true
-        default:
-            // Високосный Адар: порядок месяцев отличается, но на йом-товы не влияет
-            return false
+        case (1, 1), (1, 2), (1, 10), (1, 15), (1, 22), (8, 15), (8, 21), (10, 6): return true
+        default: return false
         }
     }
 
     private func specialTimesArea(_ info: SpecialTimesInfo) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(info.kind.title)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.subheadline.weight(.bold))
+                    .foregroundColor(.blue)
 
                 Spacer()
 
@@ -398,14 +357,14 @@ struct ZmanimView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                         Image(systemName: "chevron.down")
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(size: 10, weight: .bold))
                             .foregroundColor(.secondary)
                     }
                 }
                 .buttonStyle(.plain)
                 .confirmationDialog("בחרי זמן הדלקה", isPresented: $showingCandleOffsetDialog, titleVisibility: .visible) {
-                    ForEach(candleLightingOffsets, id: \.self) { value in
-                        Button("\(value) דקות לפני שקיעה") {
+                    ForEach([18, 24, 30, 40], id: \.self) { value in
+                        Button("\(value) דקות") {
                             candleLightingOffset = value
                             lightHaptic()
                         }
@@ -413,23 +372,22 @@ struct ZmanimView: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(spacing: 6) {
                 specialRow(title: "הדלקת נרות", time: info.candleLighting)
+                Divider().opacity(0.5)
                 specialRow(title: "צאת שבת / חג", time: info.endTime)
             }
         }
-        .padding(12)
+        .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.blue.opacity(0.08))
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.blue.opacity(0.06))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .stroke(Color.blue.opacity(0.25), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Color.blue.opacity(0.15), lineWidth: 1)
         )
     }
-
-    private var candleLightingOffsets: [Int] { [18, 24, 30, 40] }
 
     private func specialRow(title: String, time: String) -> some View {
         HStack {
@@ -437,7 +395,7 @@ struct ZmanimView: View {
                 .font(.subheadline)
             Spacer()
             Text(time)
-                .font(.title3.weight(.semibold))
+                .font(.title3.weight(.medium))
                 .monospacedDigit()
         }
     }
@@ -447,14 +405,12 @@ struct ZmanimView: View {
         return timeFormatter.string(from: d)
     }
 
+    // MARK: - Cards
+
     private func interactiveZmanButton(for item: ZmanItem) -> some View {
-        let isPopoverShown = Binding<Bool>(
+        let isSheetShown = Binding<Bool>(
             get: { activeZmanItem?.id == item.id },
-            set: { newValue in
-                if !newValue {
-                    activeZmanItem = nil
-                }
-            }
+            set: { if !$0 { activeZmanItem = nil } }
         )
 
         return Button {
@@ -463,7 +419,7 @@ struct ZmanimView: View {
             interactiveCard(for: item)
         }
         .buttonStyle(.plain)
-        .zmanPopover(isPresented: isPopoverShown) {
+        .zmanSheet(isPresented: isSheetShown) {
             opinionPicker(for: item)
         }
     }
@@ -471,140 +427,133 @@ struct ZmanimView: View {
     private func opinionPicker(for item: ZmanItem) -> some View {
         let selectedOpinion = selectedOpinions[item.id] ?? item.defaultOpinion
 
-        return VStack(alignment: .trailing, spacing: 12) {
-            VStack(alignment: .trailing, spacing: 4) {
-                Text("בחר דעה עבור הזמן")
-                    .font(.headline)
-                Text(item.title)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            .frame(maxWidth: .infinity, alignment: .trailing)
+        return ZStack {
+            // Фон шторки — серый, как основной экран
+            Color(.systemGroupedBackground).ignoresSafeArea()
 
-            ForEach(item.opinions) { opinion in
-                Button {
-                    pickOpinion(item, opinion)
-                } label: {
-                    HStack(spacing: 12) {
-                        VStack(alignment: .trailing, spacing: 4) {
-                            Text(opinion.title)
-                                .font(.body.weight(.semibold))
-                                .multilineTextAlignment(.trailing)
+            VStack(spacing: 0) {
+                // Хедер
+                VStack(spacing: 12) {
+                    Capsule()
+                        .fill(Color.gray.opacity(0.3))
+                        .frame(width: 36, height: 5)
+                        .padding(.top, 10)
 
-                            Text(opinion.time)
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-
-                        Image(systemName: selectedOpinion.id == opinion.id ? "checkmark.circle.fill" : "circle")
-                            .foregroundStyle(selectedOpinion.id == opinion.id ? Color.accentColor : Color.secondary)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(selectedOpinion.id == opinion.id ? Color.accentColor.opacity(0.12) : Color.gray.opacity(0.08))
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-
-            Button {
-                activeZmanItem = nil
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "xmark")
-                    Text("ביטול")
-                        .font(.body.weight(.semibold))
+                    Text("בחר דעה עבור \(item.title)")
+                        .font(.headline)
+                        .padding(.bottom, 10)
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .background(Color(.systemGroupedBackground))
+                
+                ScrollView {
+                    VStack(spacing: 12) {
+                        ForEach(item.opinions) { opinion in
+                            let isSelected = (selectedOpinion.id == opinion.id)
+                            
+                            Button {
+                                pickOpinion(item, opinion)
+                            } label: {
+                                HStack(alignment: .center, spacing: 14) {
+                                    // Радио-кнопка
+                                    Circle()
+                                        .strokeBorder(isSelected ? Color.blue : Color.gray.opacity(0.3), lineWidth: 2)
+                                        .background(Circle().fill(isSelected ? Color.blue : Color.clear))
+                                        .frame(width: 22, height: 22)
+                                        .overlay(
+                                            Circle()
+                                                .fill(Color.white)
+                                                .frame(width: 8, height: 8)
+                                                .opacity(isSelected ? 1 : 0)
+                                        )
+
+                                    // Текст мнения
+                                    Text(opinion.title)
+                                        .font(.body.weight(isSelected ? .semibold : .regular))
+                                        .foregroundColor(.primary)
+                                        .multilineTextAlignment(.leading)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                    
+                                    Spacer()
+
+                                    // Время
+                                    Text(opinion.time)
+                                        .font(.title3.weight(.medium))
+                                        .monospacedDigit()
+                                        .foregroundColor(.primary)
+                                }
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .fill(Color(.secondarySystemGroupedBackground)) // Белая карточка
+                                        .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                        .stroke(Color.blue, lineWidth: isSelected ? 1.5 : 0)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                    .padding(16)
+                    .padding(.bottom, 30)
+                }
             }
-            .foregroundColor(.secondary)
-            .background(
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(Color.gray.opacity(0.08))
-            )
-            .buttonStyle(.plain)
         }
-        .padding(16)
+        .environment(\.layoutDirection, .rightToLeft)
     }
 
     private func nonInteractiveCard(for item: ZmanItem) -> some View {
         let opinion = item.opinions.first!
-
-        return HStack(alignment: .center, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
-                    .font(.subheadline.weight(.semibold))
-
-                if let subtitle = item.subtitle {
-                    Text(subtitle)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-
-            Spacer()
-
-            Text(opinion.time)
-                .font(.title3.weight(.semibold))
-                .monospacedDigit()
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.gray.opacity(0.08))
-        )
+        return cardContent(title: item.title, subtitle: item.subtitle, time: opinion.time, isInteractive: false)
     }
 
     private func interactiveCard(for item: ZmanItem) -> some View {
         let selected = selectedOpinions[item.id] ?? item.defaultOpinion
+        // ИСПРАВЛЕНИЕ: Используем selected.title вместо item.subtitle
+        return cardContent(title: item.title, subtitle: selected.title, time: selected.time, isInteractive: true)
+    }
 
-        return HStack(alignment: .center, spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(item.title)
+    private func cardContent(title: String, subtitle: String?, time: String, isInteractive: Bool) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
                     .font(.subheadline.weight(.semibold))
 
-                if let subtitle = item.subtitle {
-                    Text(subtitle)
+                if let sub = subtitle {
+                    Text(sub)
                         .font(.caption)
                         .foregroundColor(.secondary)
+                        .lineLimit(1)
                 }
-
-                Text(selected.title)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(2)
             }
 
             Spacer()
 
-            Text(selected.time)
-                .font(.title3.weight(.semibold))
+            Text(time)
+                .font(.title3.weight(.regular))
                 .monospacedDigit()
         }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.gray.opacity(0.08))
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.systemBackground))
+                .shadow(color: Color.black.opacity(0.04), radius: 4, x: 0, y: 2)
         )
     }
 
     // MARK: - Bottom navigation
 
     private var bottomNavigationRow: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 24) {
             Button {
                 shiftDate(by: -1)
             } label: {
                 Image(systemName: "chevron.backward")
-                    .padding(8)
-                    .background(Circle().fill(Color.gray.opacity(0.12)))
+                    .padding(12)
+                    .background(Circle().fill(Color.gray.opacity(0.1)))
             }
 
             Button("היום") {
@@ -612,17 +561,17 @@ struct ZmanimView: View {
                 lightHaptic()
             }
             .font(.subheadline.weight(.semibold))
-            .padding(.horizontal, 20)
-            .padding(.vertical, 6)
-            .background(Capsule().fill(Color.gray.opacity(0.12)))
+            .padding(.horizontal, 24)
+            .padding(.vertical, 8)
+            .background(Capsule().fill(Color.gray.opacity(0.1)))
             .buttonStyle(.plain)
 
             Button {
                 shiftDate(by: 1)
             } label: {
                 Image(systemName: "chevron.forward")
-                    .padding(8)
-                    .background(Circle().fill(Color.gray.opacity(0.12)))
+                    .padding(12)
+                    .background(Circle().fill(Color.gray.opacity(0.1)))
             }
         }
         .buttonStyle(.plain)
@@ -635,8 +584,6 @@ struct ZmanimView: View {
         }
     }
 
-    // MARK: - Кастомный профиль / сохранение мнений
-
     private func syncSelectedOpinionsWithProfile() {
         if halachicProfile == .custom {
             applyCustomMap()
@@ -648,23 +595,18 @@ struct ZmanimView: View {
     private func applyCustomMap() {
         let map = loadCustomOpinionIDs()
         var dict: [String: ZmanOpinion] = [:]
-
         for item in currentZmanim {
-            if let opID = map[item.id],
-               let op = item.opinions.first(where: { $0.id == opID }) {
+            if let opID = map[item.id], let op = item.opinions.first(where: { $0.id == opID }) {
                 dict[item.id] = op
             }
         }
         selectedOpinions = dict
     }
-
-    /// Сброс кастомного профиля к значениям по умолчанию (сефарадим)
-    /// — удаляем карту мнений и локальный выбор; при профиле `.custom`
-    /// это значит: брать `defaultOpinion`, который настроен как Сефарадим.
+    
     private func resetCustomProfileToSephardiDefaults() {
         guard halachicProfile == .custom else { return }
-        customOpinionMapRaw = ""      // стираем сохранённые выборы
-        selectedOpinions = [:]        // локально тоже очищаем
+        customOpinionMapRaw = ""
+        selectedOpinions = [:]
         lightHaptic()
     }
 
@@ -685,18 +627,14 @@ struct ZmanimView: View {
 
     private func pickOpinion(_ item: ZmanItem, _ opinion: ZmanOpinion) {
         selectedOpinions[item.id] = opinion
-
         if halachicProfile == .custom {
             var map = loadCustomOpinionIDs()
             map[item.id] = opinion.id
             saveCustomOpinionIDs(map)
         }
-
         lightHaptic()
         activeZmanItem = nil
     }
-
-    // MARK: - Haptics
 
     private func lightHaptic() {
         let generator = UIImpactFeedbackGenerator(style: .light)
@@ -704,27 +642,18 @@ struct ZmanimView: View {
     }
 }
 
+// MARK: - ZmanSheet Extension
 private extension View {
     @ViewBuilder
-    func zmanPopover<Content: View>(
-        isPresented: Binding<Bool>,
-        @ViewBuilder content: @escaping () -> Content
-    ) -> some View {
-        if #available(iOS 17.0, *) {
-            popover(
-                isPresented: isPresented,
-                attachmentAnchor: .rect(.bounds),
-                arrowEdge: .top,
-                content: content
-            )
-            .presentationCompactAdaptation(.popover)
+    func zmanSheet<Content: View>(isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> Content) -> some View {
+        if #available(iOS 16.0, *) {
+            self.sheet(isPresented: isPresented) {
+                content()
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
+            }
         } else {
-            popover(
-                isPresented: isPresented,
-                attachmentAnchor: .rect(.bounds),
-                arrowEdge: .top,
-                content: content
-            )
+            self.sheet(isPresented: isPresented, content: content)
         }
     }
 }

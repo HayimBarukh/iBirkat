@@ -25,16 +25,8 @@ struct ContentView: View {
 
     private var isPhone: Bool {
         let idiom = UIDevice.current.userInterfaceIdiom
-
-        if idiom == .pad || idiom == .mac {
-            return false
-        }
-
-        if idiom == .phone {
-            return true
-        }
-
-        // Фолбэк для неопределённых кейсов: большие экраны считаем iPad
+        if idiom == .pad || idiom == .mac { return false }
+        if idiom == .phone { return true }
         let maxSide = max(UIScreen.main.bounds.width, UIScreen.main.bounds.height)
         return maxSide < 900
     }
@@ -53,12 +45,13 @@ struct ContentView: View {
     }
 
     private var jewishInfo: JewishDayInfo {
-        HebrewDateHelper.shared.currentInfo()
+        HebrewDateHelper.shared.currentInfo(for: locationManager.geoLocation)
     }
 
     // MARK: - Body
 
     var body: some View {
+        // Используем стандартный NavigationView для максимальной совместимости
         NavigationView {
             ZStack {
                 Color.white.ignoresSafeArea()
@@ -70,7 +63,8 @@ struct ContentView: View {
                         pdfName: selectedPrayer.pdfName(for: selectedNusach, isPhone: isPhone),
                         currentPageIndex: $currentPageIndex
                     )
-                    .padding(.horizontal, isCompactPhone ? -2 : -4)
+                    // На iPad делаем отступы более агрессивными (-12), чтобы PDF заполнял экран лучше
+                    .padding(.horizontal, isCompactPhone ? -2 : -12)
                     .padding(.top, isCompactPhone ? 0 : -2)
                 }
                 .onChange(of: selectedPrayer) { _ in
@@ -93,6 +87,7 @@ struct ContentView: View {
                     if phase == .active {
                         handleShortcutIfNeeded()
                         updateIdleTimer()
+                        locationManager.requestLocationUpdate()
                     } else {
                         UIApplication.shared.isIdleTimerDisabled = false
                     }
@@ -102,6 +97,7 @@ struct ContentView: View {
                     updatePageIndexForCurrentSelection()
                     handleShortcutIfNeeded()
                     updateIdleTimer()
+                    locationManager.requestLocationUpdate()
                 }
             }
             .overlay {
@@ -138,7 +134,6 @@ struct ContentView: View {
         default:
             return
         }
-
         updatePageIndexForCurrentSelection()
         lightHaptic()
     }
@@ -147,11 +142,9 @@ struct ContentView: View {
 
     private func ensureValidSelection() {
         guard !visibleAfterFoodPrayers.isEmpty else { return }
-
         if !selectedPrayer.hasPdf(for: selectedNusach, isPhone: isPhone) {
             selectedPrayer = visibleAfterFoodPrayers.first!
         }
-
         updatePageIndexForCurrentSelection()
     }
 
@@ -182,8 +175,8 @@ struct ContentView: View {
             }
         } label: {
             Image(systemName: "gearshape")
-                .font(.system(size: isPhone ? 14 : 16, weight: .regular))
-                .padding(6)
+                .font(.system(size: isPhone ? 15 : 18, weight: .regular))
+                .padding(8)
                 .background(
                     Capsule().fill(Color.gray.opacity(0.12))
                 )
@@ -197,8 +190,8 @@ struct ContentView: View {
                 .environmentObject(locationManager)
         } label: {
             Image(systemName: "sun.max")
-                .font(.system(size: isPhone ? 14 : 16, weight: .regular))
-                .padding(6)
+                .font(.system(size: isPhone ? 15 : 18, weight: .regular))
+                .padding(8)
                 .background(
                     Capsule().fill(Color.gray.opacity(0.12))
                 )
@@ -240,7 +233,8 @@ struct ContentView: View {
                                     Image(systemName: "checkmark")
                                 }
                             }
-                            .padding(.vertical, 6)
+                            .padding(.vertical, 8) // Чуть больше зона клика
+                            .contentShape(Rectangle())
                         }
                     }
                 }
@@ -266,8 +260,8 @@ struct ContentView: View {
                 }
                 .buttonStyle(.borderedProminent)
             }
-            .padding(20)
-            .frame(maxWidth: 340)
+            .padding(24)
+            .frame(maxWidth: 360)
             .background(
                 RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .fill(Color.white)
@@ -277,25 +271,31 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Шапка с датой и пекером брохи
+    // MARK: - Шапка с датой и пикером брохи
 
     private var prayerHeaderAndPickers: some View {
         let info = jewishInfo
 
-        return VStack(spacing: 4) {
+        // Настраиваем шрифты в зависимости от устройства
+        let dateFont: Font = isPhone ? .footnote.weight(.medium) : .body.weight(.medium)
+        let nusachFont: Font = isPhone ? .footnote.weight(.semibold) : .body.weight(.semibold)
+        let spacing: CGFloat = isPhone ? 4 : 8
 
+        return VStack(spacing: spacing) {
+
+            // Строка даты и нусаха
             HStack(spacing: 6) {
                 Spacer()
 
                 Text(info.hebrewDate)
-                    .font(.footnote.weight(.medium))
+                    .font(dateFont)
 
                 Text("·")
-                    .font(.footnote)
+                    .font(dateFont)
                     .foregroundColor(.secondary)
 
                 Text(selectedNusach.title)
-                    .font(.footnote.weight(.semibold))
+                    .font(nusachFont)
                     .foregroundColor(.secondary)
 
                 Spacer()
@@ -304,13 +304,16 @@ struct ContentView: View {
 
             if !visibleAfterFoodPrayers.isEmpty {
                 ZStack {
+                    // Иконки по бокам
                     HStack {
                         zmanimButton
                         Spacer()
                         gearButton
                     }
-                    .padding(.horizontal, 12)
+                    // Больше отступ на iPad для красоты
+                    .padding(.horizontal, isPhone ? 12 : 24)
 
+                    // Пикер по центру
                     HStack {
                         Spacer()
                         Picker("", selection: $selectedPrayer) {
@@ -325,18 +328,19 @@ struct ContentView: View {
                 }
             }
 
+            // Индикатор праздника
             if let special = info.special, !special.isEmpty {
                 Text("היום: \(special)")
-                    .font(.footnote.weight(.semibold))
-                    .padding(.vertical, 3)
-                    .padding(.horizontal, 12)
+                    .font(isPhone ? .footnote.weight(.semibold) : .subheadline.weight(.semibold))
+                    .padding(.vertical, 4)
+                    .padding(.horizontal, 14)
                     .background(Color.yellow.opacity(0.16))
                     .cornerRadius(999)
                     .padding(.top, 2)
             }
         }
-        .padding(.top, 6)
+        .padding(.top, isPhone ? 6 : 10)
         .padding(.horizontal, 12)
-        .padding(.bottom, 6)
+        .padding(.bottom, isPhone ? 6 : 10)
     }
 }
