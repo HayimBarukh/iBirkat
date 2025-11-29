@@ -28,9 +28,9 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		6082D5F32ED5E7070056CF46 /* iBirkat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; name = iBirkat.app; path = "/Users/hayimbarukh/Documents/Мои программы/iBirkat/build/Debug-iphoneos/iBirkat.app"; sourceTree = "<absolute>"; };
-		6082D5F42ED5E7070056CF46 /* iBirkatTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = iBirkatTests.xctest; path = "/Users/hayimbarukh/Documents/Мои программы/iBirkat/build/Debug-iphoneos/iBirkat.app/PlugIns/iBirkatTests.xctest"; sourceTree = "<absolute>"; };
-		6082D5F52ED5E7070056CF46 /* iBirkatUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; name = iBirkatUITests.xctest; path = "/Users/hayimbarukh/Documents/Мои программы/iBirkat/build/Debug-iphoneos/iBirkatUITests-Runner.app/PlugIns/iBirkatUITests.xctest"; sourceTree = "<absolute>"; };
+		608D1A9D2ED678F600D7AA2A /* iBirkat.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = iBirkat.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		608D1A9E2ED678F600D7AA2A /* iBirkatTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iBirkatTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		608D1A9F2ED678F600D7AA2A /* iBirkatUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = iBirkatUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -97,6 +97,9 @@
 				604FB2002EC8E6AD001D97AE /* iBirkat */,
 				604FB20E2EC8E6AF001D97AE /* iBirkatTests */,
 				604FB2182EC8E6AF001D97AE /* iBirkatUITests */,
+				608D1A9D2ED678F600D7AA2A /* iBirkat.app */,
+				608D1A9E2ED678F600D7AA2A /* iBirkatTests.xctest */,
+				608D1A9F2ED678F600D7AA2A /* iBirkatUITests.xctest */,
 			);
 			sourceTree = "<group>";
 		};
@@ -123,7 +126,7 @@
 				60D32FCE2ED2561E00DEAB50 /* KosherSwift */,
 			);
 			productName = iBirkat;
-			productReference = 6082D5F32ED5E7070056CF46 /* iBirkat.app */;
+			productReference = 608D1A9D2ED678F600D7AA2A /* iBirkat.app */;
 			productType = "com.apple.product-type.application";
 		};
 		604FB20A2EC8E6AF001D97AE /* iBirkatTests */ = {
@@ -146,7 +149,7 @@
 			packageProductDependencies = (
 			);
 			productName = iBirkatTests;
-			productReference = 6082D5F42ED5E7070056CF46 /* iBirkatTests.xctest */;
+			productReference = 608D1A9E2ED678F600D7AA2A /* iBirkatTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		604FB2142EC8E6AF001D97AE /* iBirkatUITests */ = {
@@ -169,7 +172,7 @@
 			packageProductDependencies = (
 			);
 			productName = iBirkatUITests;
-			productReference = 6082D5F52ED5E7070056CF46 /* iBirkatUITests.xctest */;
+			productReference = 608D1A9F2ED678F600D7AA2A /* iBirkatUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
@@ -408,7 +411,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 2SSS3DLWX8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -424,7 +427,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = "Hayim-Barukh.iBirkat";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -444,7 +447,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 2SSS3DLWX8;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -460,7 +463,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = "Hayim-Barukh.iBirkat";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
